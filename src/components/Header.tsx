@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { PackageSearch } from 'lucide-react'; // Using PackageSearch as a generic "box/inventory" icon
 import { siteConfig } from '@/config/site';
 import { Button } from '@/components/ui/button';
+import { ThemeToggle } from '@/components/ThemeToggle'; // Added import
 
 export function Header() {
   return (
@@ -17,6 +18,7 @@ export function Header() {
           {/* Add navigation links here if needed in the future */}
         </nav>
         <div className="flex items-center space-x-2">
+          <ThemeToggle /> {/* Added ThemeToggle component */}
           <Button asChild>
             <Link href="/add-box">Add New Box</Link>
           </Button>
