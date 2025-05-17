@@ -7,7 +7,8 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import type { Box } from '@/types';
 import { getBox } from '@/lib/store';
-import { ArrowLeft, Printer, Package, MapPin, Info, QrCode as QrCodeIcon, CalendarDays } from 'lucide-react';
+import { ArrowLeft, Printer, Package, MapPin, Info, CalendarDays } from 'lucide-react';
+import { QRCodeCanvas } from 'qrcode.react'; // Import QRCodeCanvas
 
 interface PrintViewClientProps {
   boxId: string;
@@ -80,12 +81,26 @@ export function PrintViewClient({ boxId }: PrintViewClientProps) {
 
           <section className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
             <div>
-              <h2 className="text-2xl font-semibold mb-3 text-primary flex items-center"><QrCodeIcon className="mr-2 h-6 w-6" /> QR Code</h2>
-              <div className="p-4 border border-dashed border-gray-400 rounded-md flex flex-col items-center justify-center aspect-square max-w-[200px] mx-auto md:mx-0">
-                 {/* Placeholder for actual QR code image. In a real app, you'd use a library to generate this. */}
-                <QrCodeIcon className="h-24 w-24 text-gray-700 mb-2" data-ai-hint="qr code" />
-                <p className="text-sm font-mono text-center text-gray-600">Value: {box.qrCodeValue.substring(0,8)}</p>
-                <p className="text-xs text-center text-gray-500 mt-1">(Visual representation only. A QR generation library is needed for a scannable code.)</p>
+              <h2 className="text-2xl font-semibold mb-3 text-primary flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-qr-code mr-2 h-6 w-6"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M16 21v-3a2 2 0 0 0-2-2h-3"/><path d="M3 8h3a2 2 0 0 0 2-2V3"/><path d="M8 3v3a2 2 0 0 0 2 2h3"/></svg>
+                 QR Code
+              </h2>
+              <div className="p-4 border border-dashed border-gray-400 rounded-md flex flex-col items-center justify-center aspect-square max-w-[200px] mx-auto md:mx-0 bg-white">
+                <QRCodeCanvas
+                  value={box.qrCodeValue}
+                  size={160} // Adjust size as needed
+                  bgColor={"#ffffff"}
+                  fgColor={"#000000"}
+                  level={"L"} // Error correction level
+                  includeMargin={false}
+                  imageSettings={{ // Optional: embed an image in the QR code
+                    // src: "/path/to/your/logo.png",
+                    // height: 30,
+                    // width: 30,
+                    excavate: true,
+                  }}
+                />
+                <p className="text-sm font-mono text-center text-gray-600 mt-2">Value: {box.qrCodeValue.substring(0,8)}</p>
               </div>
             </div>
             
@@ -147,4 +162,3 @@ export function PrintViewClient({ boxId }: PrintViewClientProps) {
     </>
   );
 }
-
