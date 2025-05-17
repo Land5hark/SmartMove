@@ -23,7 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { useState, useRef, ChangeEvent, useEffect } from 'react';
 import Image from 'next/image';
-import { Loader2, Camera, CheckCircle, AlertTriangle, Wand2, Trash2, Video, XCircle, CameraFlip } from 'lucide-react';
+import { Loader2, Camera, CheckCircle, AlertTriangle, Wand2, Trash2, Video, XCircle, SwitchCamera } from 'lucide-react';
 import type { Box, Room } from '@/types';
 import { ROOM_OPTIONS } from '@/types';
 import { saveBox, generateUniqueId } from '@/lib/store';
@@ -46,15 +46,15 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
   const { toast } = useToast();
   const router = useRouter();
   const [photoPreview, setPhotoPreview] = useState<string | null>(existingBox?.photoDataUrl || null);
-  const [photoFile, setPhotoFile] = useState<File | null>(null); 
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [isTagging, setIsTagging] = useState(false);
   const [isSuggestingRoom, setIsSuggestingRoom] = useState(false);
   const [aiTags, setAiTags] = useState<string[]>(existingBox?.aiGeneratedTags || []);
   const [aiSuggestedRoom, setAiSuggestedRoom] = useState<string | null>(existingBox?.suggestedRoom || null);
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null); 
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
@@ -78,7 +78,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
       // Stop any existing stream before getting a new one
       if (stream) {
           stream.getTracks().forEach(track => track.stop());
-          setStream(null); // Clear the stream state
+          setStream(null);
       }
       if (videoRef.current && videoRef.current.srcObject) {
           (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
@@ -91,7 +91,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
             video: { facingMode: currentFacingMode }
           });
           localStream = mediaStream;
-          setStream(mediaStream); 
+          setStream(mediaStream);
           setHasCameraPermission(true);
           if (videoRef.current) {
             videoRef.current.srcObject = mediaStream;
@@ -104,7 +104,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
             title: 'Camera Access Denied',
             description: 'Could not access the specified camera. Please check permissions or try another camera type.',
           });
-          setIsCameraOpen(false); 
+          setIsCameraOpen(false);
         }
       }
     };
@@ -115,7 +115,6 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
       if (localStream) {
         localStream.getTracks().forEach(track => track.stop());
       }
-      // Ensure stream from component state is also stopped if it's different or if localStream wasn't set
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
         setStream(null);
@@ -148,7 +147,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
         return;
       }
 
-      setPhotoFile(file); 
+      setPhotoFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setPhotoPreview(reader.result as string);
@@ -166,17 +165,16 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
       canvas.height = video.videoHeight;
       const context = canvas.getContext('2d');
       if (context) {
-        // Flip image horizontally if it's from the front camera (selfie)
         if (currentFacingMode === 'user') {
           context.translate(canvas.width, 0);
           context.scale(-1, 1);
         }
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.9); 
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
         setPhotoPreview(dataUrl);
-        setPhotoFile(null); 
+        setPhotoFile(null);
         triggerAiTagging(dataUrl);
-        setIsCameraOpen(false); 
+        setIsCameraOpen(false);
       } else {
         toast({ title: "Error capturing photo", description: "Could not get canvas context.", variant: "destructive" });
       }
@@ -213,7 +211,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
       setAiSuggestedRoom(null);
       return;
     }
-    
+
     setIsSuggestingRoom(true);
     setAiSuggestedRoom(null);
     const descriptionToUse = itemDescription || form.getValues('manualDescription') || "";
@@ -241,7 +239,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
       setIsSuggestingRoom(false);
     }
   };
-  
+
   const onSubmit = (data: AddBoxFormValues) => {
     const boxToSave: Omit<Box, 'createdAt' | 'qrCodeValue'> & { id?: string } = {
       id: data.id || existingBox?.id,
@@ -267,15 +265,15 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
   };
 
   const openCamera = () => {
-    setPhotoPreview(null); 
-    setPhotoFile(null);   
-    if (fileInputRef.current) fileInputRef.current.value = ""; 
-    setCurrentFacingMode('environment'); // Default to rear camera
+    setPhotoPreview(null);
+    setPhotoFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    setCurrentFacingMode('environment');
     setIsCameraOpen(true);
   };
 
   const openFileUpload = () => {
-    setIsCameraOpen(false); 
+    setIsCameraOpen(false);
     fileInputRef.current?.click();
   };
 
@@ -284,7 +282,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
     setPhotoFile(null);
     setAiTags([]);
     setAiSuggestedRoom(null);
-    setIsCameraOpen(false); 
+    setIsCameraOpen(false);
     if(fileInputRef.current) fileInputRef.current.value = "";
   }
 
@@ -347,15 +345,15 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
               <div className="space-y-4">
                 <div className="relative">
                   <video ref={videoRef} className="w-full aspect-video rounded-md border bg-muted" autoPlay muted playsInline />
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="icon" 
-                    onClick={handleFlipCamera} 
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={handleFlipCamera}
                     className="absolute top-2 right-2 bg-black/50 hover:bg-black/70 text-white"
                     title="Flip Camera"
                   >
-                    <CameraFlip className="h-5 w-5" />
+                    <SwitchCamera className="h-5 w-5" />
                   </Button>
                 </div>
                 {hasCameraPermission === false && (
@@ -382,7 +380,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
                 </Button>
               </div>
             )}
-            
+
             {photoPreview && !isCameraOpen && (
               <div className="mt-4 relative group">
                 <Image
@@ -399,7 +397,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
                     variant="secondary"
                     size="icon"
                     className="h-8 w-8"
-                    onClick={openFileUpload} 
+                    onClick={openFileUpload}
                     title="Change Photo (Upload)"
                   >
                     <Camera className="h-4 w-4" />
@@ -468,7 +466,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
                       className="resize-y min-h-[100px]"
                       {...field}
                       onBlur={() => {
-                        if (!aiTags.length && !photoPreview) { 
+                        if (!aiTags.length && !photoPreview) {
                            triggerAiRoomSuggestion(field.value || "");
                         }
                       }}
@@ -499,10 +497,10 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
                   <Wand2 className="mr-2 h-5 w-5 text-accent-foreground" />
                   <p className="text-sm font-medium text-accent-foreground">AI Suggestion: <span className="font-semibold">{aiSuggestedRoom}</span></p>
                 </div>
-                <Button 
-                  type="button" 
-                  variant="link" 
-                  size="sm" 
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
                   className="p-0 h-auto mt-1 text-accent-foreground"
                   onClick={() => {
                     form.setValue('assignedRoom', aiSuggestedRoom as Room, { shouldValidate: true });
@@ -557,3 +555,5 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
     </Form>
   );
 }
+
+    
