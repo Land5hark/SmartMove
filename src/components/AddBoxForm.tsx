@@ -23,7 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { useState, useRef, ChangeEvent, useEffect } from 'react';
 import Image from 'next/image';
-import { Loader2, Camera, CheckCircle, AlertTriangle, Wand2, Trash2, Video, XCircle } from 'lucide-react';
+import { Loader2, Camera, CheckCircle, AlertTriangle, Wand2, Trash2, Video, XCircle, CameraFlip } from 'lucide-react';
 import type { Box, Room } from '@/types';
 import { ROOM_OPTIONS } from '@/types';
 import { saveBox, generateUniqueId } from '@/lib/store';
@@ -46,7 +46,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
   const { toast } = useToast();
   const router = useRouter();
   const [photoPreview, setPhotoPreview] = useState<string | null>(existingBox?.photoDataUrl || null);
-  const [photoFile, setPhotoFile] = useState<File | null>(null); // Still used for file uploads
+  const [photoFile, setPhotoFile] = useState<File | null>(null); 
   const [isTagging, setIsTagging] = useState(false);
   const [isSuggestingRoom, setIsSuggestingRoom] = useState(false);
   const [aiTags, setAiTags] = useState<string[]>(existingBox?.aiGeneratedTags || []);
@@ -54,11 +54,12 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null); // For capturing frame
+  const canvasRef = useRef<HTMLCanvasElement>(null); 
 
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
+  const [currentFacingMode, setCurrentFacingMode] = useState<'user' | 'environment'>('environment');
 
 
   const form = useForm<AddBoxFormValues>({
@@ -70,13 +71,27 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
     },
   });
 
-  // Effect for camera access and cleanup
   useEffect(() => {
-    if (isCameraOpen) {
-      const getCameraPermission = async () => {
+    let localStream: MediaStream | null = null;
+
+    const getCameraStream = async () => {
+      // Stop any existing stream before getting a new one
+      if (stream) {
+          stream.getTracks().forEach(track => track.stop());
+          setStream(null); // Clear the stream state
+      }
+      if (videoRef.current && videoRef.current.srcObject) {
+          (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
+          videoRef.current.srcObject = null;
+      }
+
+      if (isCameraOpen) {
         try {
-          const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
-          setStream(mediaStream);
+          const mediaStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: currentFacingMode }
+          });
+          localStream = mediaStream;
+          setStream(mediaStream); 
           setHasCameraPermission(true);
           if (videoRef.current) {
             videoRef.current.srcObject = mediaStream;
@@ -87,29 +102,34 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
           toast({
             variant: 'destructive',
             title: 'Camera Access Denied',
-            description: 'Please enable camera permissions in your browser settings to use this feature.',
+            description: 'Could not access the specified camera. Please check permissions or try another camera type.',
           });
-          setIsCameraOpen(false); // Close camera view if permission denied
+          setIsCameraOpen(false); 
         }
-      };
-      getCameraPermission();
-    } else {
-      // Cleanup stream when camera is closed
+      }
+    };
+
+    getCameraStream();
+
+    return () => {
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+      }
+      // Ensure stream from component state is also stopped if it's different or if localStream wasn't set
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
         setStream(null);
-        if (videoRef.current) {
-          videoRef.current.srcObject = null;
-        }
       }
-    }
-    // Cleanup function for when component unmounts or isCameraOpen changes
-    return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+      if (videoRef.current && videoRef.current.srcObject) {
+          (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
+          videoRef.current.srcObject = null;
       }
     };
-  }, [isCameraOpen, toast]); // Removed stream from dependencies to avoid loop
+  }, [isCameraOpen, currentFacingMode, toast]);
+
+  const handleFlipCamera = () => {
+    setCurrentFacingMode(prevMode => prevMode === 'user' ? 'environment' : 'user');
+  };
 
   const handlePhotoChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -128,7 +148,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
         return;
       }
 
-      setPhotoFile(file); // Store the file object
+      setPhotoFile(file); 
       const reader = new FileReader();
       reader.onloadend = () => {
         setPhotoPreview(reader.result as string);
@@ -146,12 +166,17 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
       canvas.height = video.videoHeight;
       const context = canvas.getContext('2d');
       if (context) {
+        // Flip image horizontally if it's from the front camera (selfie)
+        if (currentFacingMode === 'user') {
+          context.translate(canvas.width, 0);
+          context.scale(-1, 1);
+        }
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.9); // Use JPEG for smaller size
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.9); 
         setPhotoPreview(dataUrl);
-        setPhotoFile(null); // Clear any uploaded file
+        setPhotoFile(null); 
         triggerAiTagging(dataUrl);
-        setIsCameraOpen(false); // Close camera view, show preview
+        setIsCameraOpen(false); 
       } else {
         toast({ title: "Error capturing photo", description: "Could not get canvas context.", variant: "destructive" });
       }
@@ -242,14 +267,15 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
   };
 
   const openCamera = () => {
-    setPhotoPreview(null); // Clear existing preview
-    setPhotoFile(null);   // Clear any selected file
-    if (fileInputRef.current) fileInputRef.current.value = ""; // Reset file input
+    setPhotoPreview(null); 
+    setPhotoFile(null);   
+    if (fileInputRef.current) fileInputRef.current.value = ""; 
+    setCurrentFacingMode('environment'); // Default to rear camera
     setIsCameraOpen(true);
   };
 
   const openFileUpload = () => {
-    setIsCameraOpen(false); // This will trigger cleanup in useEffect
+    setIsCameraOpen(false); 
     fileInputRef.current?.click();
   };
 
@@ -258,14 +284,14 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
     setPhotoFile(null);
     setAiTags([]);
     setAiSuggestedRoom(null);
-    setIsCameraOpen(false); // Ensure camera is closed if it was open
+    setIsCameraOpen(false); 
     if(fileInputRef.current) fileInputRef.current.value = "";
   }
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <Card>
+        <Card className="shadow-lg">
           <CardHeader>
             <CardTitle>Box Identifier</CardTitle>
             <CardDescription>Unique ID for your box. This will be part of the QR code.</CardDescription>
@@ -290,7 +316,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="shadow-lg">
           <CardHeader>
             <CardTitle>Box Contents Photo</CardTitle>
             <CardDescription>Add a photo of the items inside the box using your camera or by uploading an image.</CardDescription>
@@ -304,10 +330,10 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
               ref={fileInputRef}
               id="photoUpload"
             />
-            <canvas ref={canvasRef} className="hidden"></canvas> {/* Hidden canvas for capturing frame */}
+            <canvas ref={canvasRef} className="hidden"></canvas>
 
             {!photoPreview && !isCameraOpen && (
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Button type="button" variant="outline" onClick={openFileUpload}>
                   <Camera className="mr-2 h-4 w-4" /> Upload Photo
                 </Button>
@@ -319,7 +345,19 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
 
             {isCameraOpen && (
               <div className="space-y-4">
-                <video ref={videoRef} className="w-full aspect-video rounded-md border bg-muted" autoPlay muted playsInline />
+                <div className="relative">
+                  <video ref={videoRef} className="w-full aspect-video rounded-md border bg-muted" autoPlay muted playsInline />
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="icon" 
+                    onClick={handleFlipCamera} 
+                    className="absolute top-2 right-2 bg-black/50 hover:bg-black/70 text-white"
+                    title="Flip Camera"
+                  >
+                    <CameraFlip className="h-5 w-5" />
+                  </Button>
+                </div>
                 {hasCameraPermission === false && (
                   <Alert variant="destructive">
                     <AlertTriangle className="h-4 w-4" />
@@ -330,7 +368,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
                   </Alert>
                 )}
                  {hasCameraPermission === true && (
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <Button type="button" onClick={handleCapturePhoto} disabled={!stream}>
                       <Camera className="mr-2 h-4 w-4" /> Capture Photo
                     </Button>
@@ -339,7 +377,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
                     </Button>
                   </div>
                 )}
-                <Button type="button" variant="link" size="sm" onClick={() => { setIsCameraOpen(false); openFileUpload(); }}>
+                <Button type="button" variant="link" size="sm" className="p-0 h-auto" onClick={() => { setIsCameraOpen(false); openFileUpload(); }}>
                   Or Upload Photo Instead
                 </Button>
               </div>
@@ -362,6 +400,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
                     size="icon"
                     className="h-8 w-8"
                     onClick={openFileUpload} 
+                    title="Change Photo (Upload)"
                   >
                     <Camera className="h-4 w-4" />
                     <span className="sr-only">Change Photo (Upload)</span>
@@ -372,6 +411,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
                     size="icon"
                     className="h-8 w-8"
                     onClick={openCamera}
+                    title="Change Photo (Camera)"
                   >
                     <Video className="h-4 w-4" />
                     <span className="sr-only">Change Photo (Camera)</span>
@@ -382,6 +422,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
                     size="icon"
                     className="h-8 w-8"
                     onClick={removePhoto}
+                    title="Remove Photo"
                   >
                     <Trash2 className="h-4 w-4" />
                      <span className="sr-only">Remove Photo</span>
@@ -409,7 +450,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="shadow-lg">
           <CardHeader>
             <CardTitle>Item Details</CardTitle>
             <CardDescription>Add manual notes about the contents, especially for fragile or important items.</CardDescription>
@@ -427,7 +468,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
                       className="resize-y min-h-[100px]"
                       {...field}
                       onBlur={() => {
-                        if (!aiTags.length && !photoPreview) { // Only trigger if no photo/tags yet
+                        if (!aiTags.length && !photoPreview) { 
                            triggerAiRoomSuggestion(field.value || "");
                         }
                       }}
@@ -440,7 +481,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="shadow-lg">
           <CardHeader>
             <CardTitle>Room Assignment</CardTitle>
             <CardDescription>Assign this box to a room in your new place.</CardDescription>
@@ -503,7 +544,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
           <Button type="button" variant="outline" onClick={() => router.back()}>
             Cancel
           </Button>
-          <Button type="submit" disabled={form.formState.isSubmitting || isTagging || isSuggestingRoom || isCameraOpen && !hasCameraPermission}>
+          <Button type="submit" disabled={form.formState.isSubmitting || isTagging || isSuggestingRoom || (isCameraOpen && hasCameraPermission === null) || (isCameraOpen && !hasCameraPermission && !stream) }>
             {form.formState.isSubmitting ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
@@ -516,4 +557,3 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
     </Form>
   );
 }
-

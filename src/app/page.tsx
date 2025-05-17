@@ -5,7 +5,7 @@ import type { NextPage } from 'next';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image'; // Import next/image
+import Image from 'next/image'; 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -16,7 +16,7 @@ import { getBoxes } from '@/lib/store';
 
 const BoxCard: React.FC<{ box: Box }> = ({ box }) => {
   return (
-    <Card className="flex flex-col">
+    <Card className="flex flex-col shadow-lg">
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span>Box #{box.id.substring(0, 6)}...</span>
@@ -75,7 +75,6 @@ const Home: NextPage = () => {
   const router = useRouter();
 
   useEffect(() => {
-    // getBoxes() now returns boxes with photoDataUrl if available
     setBoxes(getBoxes());
   }, []);
 
@@ -89,7 +88,7 @@ const Home: NextPage = () => {
   return (
     <div className="container mx-auto max-w-4xl py-8 px-4">
       <section className="mb-12">
-        <Card>
+        <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="text-2xl">Scan Box QR Code</CardTitle>
             <CardDescription>Enter the Box ID from the QR code to quickly find its details.</CardDescription>
@@ -125,7 +124,7 @@ const Home: NextPage = () => {
         </div>
 
         {boxes.length === 0 ? (
-          <Card className="text-center py-12">
+          <Card className="text-center py-12 shadow-lg">
             <CardContent>
               <Package className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
               <p className="text-xl font-medium text-muted-foreground">No boxes added yet.</p>
