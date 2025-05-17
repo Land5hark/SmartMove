@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -84,7 +85,7 @@ export function PrintViewClient({ boxId }: PrintViewClientProps) {
                  {/* Placeholder for actual QR code image. In a real app, you'd use a library to generate this. */}
                 <QrCodeIcon className="h-24 w-24 text-gray-700 mb-2" data-ai-hint="qr code" />
                 <p className="text-sm font-mono text-center text-gray-600">Value: {box.qrCodeValue.substring(0,8)}</p>
-                <p className="text-xs text-center text-gray-500 mt-1">Scan this to view details</p>
+                <p className="text-xs text-center text-gray-500 mt-1">(Visual representation only. A QR generation library is needed for a scannable code.)</p>
               </div>
             </div>
             
@@ -146,3 +147,4 @@ export function PrintViewClient({ boxId }: PrintViewClientProps) {
     </>
   );
 }
+
