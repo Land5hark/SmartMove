@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { NextPage } from 'next';
@@ -11,7 +12,8 @@ import { Label } from '@/components/ui/label';
 import { PlusCircle, Search, Package, MapPin, QrCode } from 'lucide-react';
 import type { Box } from '@/types';
 import { getBoxes } from '@/lib/store';
-import Image from 'next/image';
+// Image component is no longer used directly in BoxCard here for performance/quota reasons
+// import Image from 'next/image'; 
 
 const BoxCard: React.FC<{ box: Box }> = ({ box }) => {
   return (
@@ -32,17 +34,13 @@ const BoxCard: React.FC<{ box: Box }> = ({ box }) => {
         </CardDescription>
       </CardHeader>
       <CardContent className="flex-grow">
-        {box.photoDataUrl && (
-          <div className="mb-2 aspect-video w-full overflow-hidden rounded-md">
-            <Image 
-              src={box.photoDataUrl} 
-              alt={`Contents of box ${box.id}`} 
-              width={300} 
-              height={200} 
-              className="object-cover w-full h-full"
-              data-ai-hint="moving box items" 
-            />
-          </div>
+        {/* Image preview removed from homepage list to save localStorage quota */}
+        {/* photoDataUrl will not be available on boxes from getBoxes() */}
+        {/* If a placeholder is desired: */}
+        { !box.photoDataUrl && (
+            <div className="mb-2 aspect-video w-full rounded-md bg-muted flex items-center justify-center">
+                <Package className="h-12 w-12 text-muted-foreground/50" data-ai-hint="package box" />
+            </div>
         )}
         <div className="flex items-center text-sm text-muted-foreground">
           <Package className="mr-1 h-4 w-4" />
@@ -70,6 +68,7 @@ const Home: NextPage = () => {
   const router = useRouter();
 
   useEffect(() => {
+    // getBoxes() now returns boxes without photoDataUrl
     setBoxes(getBoxes());
   }, []);
 
