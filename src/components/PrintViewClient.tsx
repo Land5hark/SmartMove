@@ -9,6 +9,7 @@ import type { Box } from '@/types';
 import { getBox } from '@/lib/store';
 import { ArrowLeft, Printer, Package, MapPin, Info, CalendarDays } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react'; // Import QRCodeCanvas
+import { siteConfig } from '@/config/site'; // Import siteConfig
 
 interface PrintViewClientProps {
   boxId: string;
@@ -33,6 +34,8 @@ export function PrintViewClient({ boxId }: PrintViewClientProps) {
   if (box === null) {
     return <div className="p-8 text-center text-red-500">Box not found. Cannot generate print view.</div>;
   }
+
+  const boxUrl = `${siteConfig.url}/box/${box.id}`;
 
   return (
     <>
@@ -75,7 +78,7 @@ export function PrintViewClient({ boxId }: PrintViewClientProps) {
         `}</style>
         <div className="printable-area border border-gray-300 p-6 sm:p-10 rounded-lg shadow-lg print:shadow-none print:border-none print:p-0">
           <header className="mb-8 text-center border-b pb-6 border-gray-300">
-            <h1 className="text-4xl font-bold text-primary">MoveAssist - Box Inventory</h1>
+            <h1 className="text-4xl font-bold text-primary">SmartMove - Box Inventory</h1>
             <p className="text-lg text-muted-foreground">Box ID: <span className="font-mono font-semibold text-foreground">{box.id.substring(0,8)}</span></p>
           </header>
 
@@ -87,20 +90,14 @@ export function PrintViewClient({ boxId }: PrintViewClientProps) {
               </h2>
               <div className="p-4 border border-dashed border-gray-400 rounded-md flex flex-col items-center justify-center aspect-square max-w-[200px] mx-auto md:mx-0 bg-white">
                 <QRCodeCanvas
-                  value={box.qrCodeValue}
-                  size={160} // Adjust size as needed
+                  value={boxUrl} // Use the full URL here
+                  size={160} 
                   bgColor={"#ffffff"}
                   fgColor={"#000000"}
-                  level={"L"} // Error correction level
+                  level={"L"} 
                   includeMargin={false}
-                  imageSettings={{ // Optional: embed an image in the QR code
-                    // src: "/path/to/your/logo.png",
-                    // height: 30,
-                    // width: 30,
-                    excavate: true,
-                  }}
                 />
-                <p className="text-sm font-mono text-center text-gray-600 mt-2">Value: {box.qrCodeValue.substring(0,8)}</p>
+                <p className="text-sm font-mono text-center text-gray-600 mt-2">ID: {box.id.substring(0,8)}</p>
               </div>
             </div>
             
@@ -155,10 +152,11 @@ export function PrintViewClient({ boxId }: PrintViewClientProps) {
 
           <section className="pt-6 border-t border-gray-300 text-sm text-gray-500">
              <p className="flex items-center"><CalendarDays className="mr-2 h-4 w-4" /> Date Created: {new Date(box.createdAt).toLocaleDateString()} {new Date(box.createdAt).toLocaleTimeString()}</p>
-             <p className="mt-4 text-center">Thank you for using MoveAssist!</p>
+             <p className="mt-4 text-center">Thank you for using SmartMove!</p>
           </section>
         </div>
       </div>
     </>
   );
 }
+
