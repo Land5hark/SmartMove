@@ -5,6 +5,7 @@ import type { NextPage } from 'next';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image'; // Import next/image
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,8 +13,6 @@ import { Label } from '@/components/ui/label';
 import { PlusCircle, Search, Package, MapPin, QrCode } from 'lucide-react';
 import type { Box } from '@/types';
 import { getBoxes } from '@/lib/store';
-// Image component is no longer used directly in BoxCard here for performance/quota reasons
-// import Image from 'next/image'; 
 
 const BoxCard: React.FC<{ box: Box }> = ({ box }) => {
   return (
@@ -34,13 +33,21 @@ const BoxCard: React.FC<{ box: Box }> = ({ box }) => {
         </CardDescription>
       </CardHeader>
       <CardContent className="flex-grow">
-        {/* Image preview removed from homepage list to save localStorage quota */}
-        {/* photoDataUrl will not be available on boxes from getBoxes() */}
-        {/* If a placeholder is desired: */}
-        { !box.photoDataUrl && (
-            <div className="mb-2 aspect-video w-full rounded-md bg-muted flex items-center justify-center">
-                <Package className="h-12 w-12 text-muted-foreground/50" data-ai-hint="package box" />
-            </div>
+        {box.photoDataUrl ? (
+          <div className="mb-2 aspect-video w-full rounded-md bg-muted relative overflow-hidden">
+            <Image
+              src={box.photoDataUrl}
+              alt={`Contents of box ${box.id.substring(0, 6)}`}
+              layout="fill"
+              objectFit="cover"
+              className="rounded-md"
+              data-ai-hint="moving box items"
+            />
+          </div>
+        ) : (
+          <div className="mb-2 aspect-video w-full rounded-md bg-muted flex items-center justify-center">
+            <Package className="h-12 w-12 text-muted-foreground/50" data-ai-hint="package box" />
+          </div>
         )}
         <div className="flex items-center text-sm text-muted-foreground">
           <Package className="mr-1 h-4 w-4" />
@@ -68,7 +75,7 @@ const Home: NextPage = () => {
   const router = useRouter();
 
   useEffect(() => {
-    // getBoxes() now returns boxes without photoDataUrl
+    // getBoxes() now returns boxes with photoDataUrl if available
     setBoxes(getBoxes());
   }, []);
 

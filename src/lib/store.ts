@@ -21,8 +21,6 @@ function saveMetadataBoxesToStorage(boxes: Omit<Box, 'photoDataUrl' | 'items'>[]
   } catch (e: any) {
     if (e.name === 'QuotaExceededError') {
       console.error("LocalStorage quota exceeded while saving box metadata array. Critical error.", e);
-      // This is a critical failure, potentially meaning even metadata is too much or localStorage is full.
-      // Consider a more user-facing error or a mechanism to clear older data if this becomes frequent.
       alert("Error: Could not save box data. Storage is full. Please try removing some older boxes or freeing up browser storage.");
     }
     throw e; // Re-throw to indicate failure
@@ -60,10 +58,19 @@ export function generateUniqueId(): string {
 }
 
 export function getBoxes(): Box[] {
-  // Returns boxes without photoDataUrl for list views
-  return getRawBoxesFromStorage().map(box => {
+  // Returns boxes WITH photoDataUrl for list views
+  // This might be performance intensive if many boxes have large photos
+  const metadataBoxes = getRawBoxesFromStorage().map(box => {
     const { photoDataUrl, ...rest } = box; // Strip photoDataUrl if present from old storage
     return rest;
+  });
+
+  return metadataBoxes.map(boxMeta => {
+    const photoDataUrl = getPhotoFromStorage(boxMeta.id);
+    return {
+      ...boxMeta,
+      photoDataUrl: photoDataUrl, // Add photoDataUrl if found
+    };
   }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
