@@ -53,19 +53,19 @@ body {
     --card-foreground: 0 0% 98%; /* Text on card */
     --popover: 220 20% 15%;
     --popover-foreground: 0 0% 98%;
-    --primary: 320 80% 60%; /* Vibrant Pink/Magenta */
+    --primary: 270 70% 65%; /* Vibrant Purple */
     --primary-foreground: 0 0% 100%; /* White */
     --secondary: 220 20% 20%; /* Lighter dark shade for secondary elements */
     --secondary-foreground: 0 0% 90%; /* Light gray for secondary text */
     --muted: 220 20% 25%;
     --muted-foreground: 220 20% 60%; /* Lighter gray for muted text */
-    --accent: 320 80% 60%; /* Vibrant Pink/Magenta */
+    --accent: 270 70% 65%; /* Vibrant Purple */
     --accent-foreground: 0 0% 100%; /* White */
     --destructive: 0 62.8% 30.6%; /* Default dark destructive */
     --destructive-foreground: 0 0% 98%; /* Default dark destructive text */
     --border: 220 20% 30%; /* Slightly visible border */
     --input: 220 20% 20%; /* Input background */
-    --ring: 320 80% 70%; /* Lighter pink for focus rings */
+    --ring: 270 70% 75%; /* Lighter purple for focus rings */
 
     --chart-1: 12 76% 61%; /* Keeping chart colors, adjust if needed */
     --chart-2: 173 58% 39%;
@@ -75,12 +75,12 @@ body {
 
     --sidebar-background: 220 20% 10%; /* Same as main background */
     --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 320 80% 60%;
+    --sidebar-primary: 270 70% 65%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 320 80% 60%;
+    --sidebar-accent: 270 70% 65%;
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 220 20% 25%;
-    --sidebar-ring: 320 80% 70%;
+    --sidebar-ring: 270 70% 75%;
   }
 }
 
@@ -110,3 +110,4 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground) / 0.8);
 }
+
