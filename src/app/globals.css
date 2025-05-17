@@ -15,20 +15,20 @@ body {
     --card-foreground: 0 0% 7%; /* Near Black */
     --popover: 0 0% 97%; /* Very Light Grey */
     --popover-foreground: 0 0% 7%; /* Near Black */
-    --primary: 325 90% 55%; /* Pink */
+    --primary: 270 90% 65%; /* Purple */
     --primary-foreground: 0 0% 100%; /* White */
     --secondary: 0 0% 94%; /* Light Grey (used for secondary buttons, backgrounds) */
     --secondary-foreground: 0 0% 7%; /* Near Black (text on secondary) */
     --muted: 0 0% 94%; /* Light Grey */
     --muted-foreground: 0 0% 40%; /* Grey */
-    --accent: 325 90% 55%; /* Pink */
+    --accent: 270 90% 65%; /* Purple */
     --accent-foreground: 0 0% 100%; /* White */
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 90%; /* Light Grey Border */
     --input: 0 0% 96%; /* Light Grey Input */
-    --ring: 325 90% 55%; /* Pink */
-    --chart-1: 325 90% 55%; /* Pink */
+    --ring: 270 90% 65%; /* Purple */
+    --chart-1: 270 90% 65%; /* Purple */
     --chart-2: 207 88% 68%; /* Original Blue as a secondary chart color */
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
@@ -38,12 +38,12 @@ body {
     /* Sidebar specific colors - can be adjusted if sidebar is used extensively with different theme */
     --sidebar-background: 0 0% 98%; /* Slightly off-white */
     --sidebar-foreground: 0 0% 7%;
-    --sidebar-primary: 325 90% 55%; /* Pink */
+    --sidebar-primary: 270 90% 65%; /* Purple */
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 325 90% 60%; /* Lighter Pink */
+    --sidebar-accent: 270 90% 70%; /* Lighter Purple */
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 0 0% 90%;
-    --sidebar-ring: 325 90% 55%;
+    --sidebar-ring: 270 90% 65%; /* Purple */
   }
 
   .dark {
@@ -53,34 +53,35 @@ body {
     --card-foreground: 0 0% 98%; /* Near White */
     --popover: 0 0% 9%; /* Very Dark Grey */
     --popover-foreground: 0 0% 98%; /* Near White */
-    --primary: 325 90% 55%; /* Pink */
+    --primary: 270 85% 70%; /* Vibrant Purple */
     --primary-foreground: 0 0% 100%; /* White */
     --secondary: 0 0% 15%; /* Dark Grey (used for secondary buttons, backgrounds) */
     --secondary-foreground: 0 0% 98%; /* Near White (text on secondary) */
     --muted: 0 0% 15%; /* Dark Grey */
     --muted-foreground: 0 0% 63%; /* Light Grey */
-    --accent: 325 90% 55%; /* Pink */
+    --accent: 270 85% 70%; /* Vibrant Purple */
     --accent-foreground: 0 0% 100%; /* White */
     --destructive: 0 72.2% 50.6%; /* Darker destructive red */
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 14%; /* Dark Grey Border */
     --input: 0 0% 14%; /* Dark Grey Input */
-    --ring: 325 90% 55%; /* Pink */
+    --ring: 270 85% 70%; /* Vibrant Purple */
 
-    --chart-1: 325 90% 55%; /* Pink */
-    --chart-2: 207 88% 68%; /* Original Blue as a secondary chart color */
+    --chart-1: 270 85% 70%; /* Vibrant Purple */
+    --chart-2: 207 88% 68%; 
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
 
+    /* Sidebar specific colors */
     --sidebar-background: 0 0% 3.9%; /* Near Black */
     --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 325 90% 55%; /* Pink */
+    --sidebar-primary: 270 85% 70%; /* Vibrant Purple */
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 325 90% 60%; /* Lighter Pink */
+    --sidebar-accent: 270 85% 75%; /* Lighter Vibrant Purple */
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 0 0% 14%;
-    --sidebar-ring: 325 90% 55%;
+    --sidebar-ring: 270 85% 70%; /* Vibrant Purple */
   }
 }
 
