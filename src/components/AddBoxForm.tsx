@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -20,17 +21,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { useState, useRef, ChangeEvent } from 'react';
+import { useState, useRef, ChangeEvent, useEffect } from 'react';
 import Image from 'next/image';
-import { Loader2, Camera, CheckCircle, AlertTriangle, Wand2, Trash2 } from 'lucide-react';
+import { Loader2, Camera, CheckCircle, AlertTriangle, Wand2, Trash2, Video, XCircle } from 'lucide-react';
 import type { Box, Room } from '@/types';
 import { ROOM_OPTIONS } from '@/types';
 import { saveBox, generateUniqueId } from '@/lib/store';
 import { generateItemTags } from '@/ai/flows/generate-item-tags';
 import { suggestRoomPlacement } from '@/ai/flows/suggest-room-placement';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 const addBoxFormSchema = z.object({
-  id: z.string().optional(), // Optional for existing box ID, otherwise auto-generated
+  id: z.string().optional(),
   manualDescription: z.string().optional(),
   assignedRoom: z.string().optional(),
 });
@@ -44,21 +46,70 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
   const { toast } = useToast();
   const router = useRouter();
   const [photoPreview, setPhotoPreview] = useState<string | null>(existingBox?.photoDataUrl || null);
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null); // Still used for file uploads
   const [isTagging, setIsTagging] = useState(false);
   const [isSuggestingRoom, setIsSuggestingRoom] = useState(false);
   const [aiTags, setAiTags] = useState<string[]>(existingBox?.aiGeneratedTags || []);
   const [aiSuggestedRoom, setAiSuggestedRoom] = useState<string | null>(existingBox?.suggestedRoom || null);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null); // For capturing frame
+
+  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+
 
   const form = useForm<AddBoxFormValues>({
     resolver: zodResolver(addBoxFormSchema),
     defaultValues: {
-      id: existingBox?.id || generateUniqueId().substring(0,8), // Pre-fill if editing, else new short ID
+      id: existingBox?.id || generateUniqueId().substring(0,8),
       manualDescription: existingBox?.manualDescription || '',
       assignedRoom: existingBox?.assignedRoom || '',
     },
   });
+
+  // Effect for camera access and cleanup
+  useEffect(() => {
+    if (isCameraOpen) {
+      const getCameraPermission = async () => {
+        try {
+          const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
+          setStream(mediaStream);
+          setHasCameraPermission(true);
+          if (videoRef.current) {
+            videoRef.current.srcObject = mediaStream;
+          }
+        } catch (error) {
+          console.error('Error accessing camera:', error);
+          setHasCameraPermission(false);
+          toast({
+            variant: 'destructive',
+            title: 'Camera Access Denied',
+            description: 'Please enable camera permissions in your browser settings to use this feature.',
+          });
+          setIsCameraOpen(false); // Close camera view if permission denied
+        }
+      };
+      getCameraPermission();
+    } else {
+      // Cleanup stream when camera is closed
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        setStream(null);
+        if (videoRef.current) {
+          videoRef.current.srcObject = null;
+        }
+      }
+    }
+    // Cleanup function for when component unmounts or isCameraOpen changes
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [isCameraOpen, toast]); // Removed stream from dependencies to avoid loop
 
   const handlePhotoChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -72,19 +123,40 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
         setPhotoPreview(null);
         setPhotoFile(null);
         if (fileInputRef.current) {
-            fileInputRef.current.value = ""; // Reset file input
+            fileInputRef.current.value = "";
         }
         return;
       }
 
-      setPhotoFile(file);
+      setPhotoFile(file); // Store the file object
       const reader = new FileReader();
       reader.onloadend = () => {
         setPhotoPreview(reader.result as string);
-        // Automatically trigger AI tagging
         triggerAiTagging(reader.result as string);
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handleCapturePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const context = canvas.getContext('2d');
+      if (context) {
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.9); // Use JPEG for smaller size
+        setPhotoPreview(dataUrl);
+        setPhotoFile(null); // Clear any uploaded file
+        triggerAiTagging(dataUrl);
+        setIsCameraOpen(false); // Close camera view, show preview
+      } else {
+        toast({ title: "Error capturing photo", description: "Could not get canvas context.", variant: "destructive" });
+      }
+    } else {
+       toast({ title: "Error capturing photo", description: "Camera or canvas not ready.", variant: "destructive" });
     }
   };
 
@@ -98,7 +170,6 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
         title: 'AI Tagging Complete',
         description: `${result.itemTags.length} tags generated.`,
       });
-      // After tags are generated, trigger room suggestion
       triggerAiRoomSuggestion(result.itemTags.join(', '));
     } catch (error) {
       console.error('AI Tagging Error:', error);
@@ -148,13 +219,13 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
   
   const onSubmit = (data: AddBoxFormValues) => {
     const boxToSave: Omit<Box, 'createdAt' | 'qrCodeValue'> & { id?: string } = {
-      id: data.id || existingBox?.id, // Use existing ID if editing
+      id: data.id || existingBox?.id,
       manualDescription: data.manualDescription,
       assignedRoom: data.assignedRoom,
       photoDataUrl: photoPreview || undefined,
       aiGeneratedTags: aiTags,
       suggestedRoom: aiSuggestedRoom || undefined,
-      items: [], // Simplified for now, tags cover item list
+      items: [],
     };
 
     const savedBox = saveBox(boxToSave);
@@ -167,8 +238,29 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
         </Button>
       ),
     });
-    router.push('/'); // Navigate to home page after saving
+    router.push('/');
   };
+
+  const openCamera = () => {
+    setPhotoPreview(null); // Clear existing preview
+    setPhotoFile(null);   // Clear any selected file
+    if (fileInputRef.current) fileInputRef.current.value = ""; // Reset file input
+    setIsCameraOpen(true);
+  };
+
+  const openFileUpload = () => {
+    setIsCameraOpen(false); // This will trigger cleanup in useEffect
+    fileInputRef.current?.click();
+  };
+
+  const removePhoto = () => {
+    setPhotoPreview(null);
+    setPhotoFile(null);
+    setAiTags([]);
+    setAiSuggestedRoom(null);
+    setIsCameraOpen(false); // Ensure camera is closed if it was open
+    if(fileInputRef.current) fileInputRef.current.value = "";
+  }
 
   return (
     <Form {...form}>
@@ -186,7 +278,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
                 <FormItem>
                   <FormLabel>Box ID</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., KITCH001 or unique hash" {...field} readOnly={!!existingBox} />
+                    <Input placeholder="e.g., KITCH001 or unique hash" {...field} readOnly={!!existingBox || form.formState.isSubmitting} />
                   </FormControl>
                   <FormDescription>
                     {existingBox ? "This ID cannot be changed." : "A unique ID for this box. Keep it short if handwriting."}
@@ -201,7 +293,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
         <Card>
           <CardHeader>
             <CardTitle>Box Contents Photo</CardTitle>
-            <CardDescription>Take or upload a photo of the items inside the box.</CardDescription>
+            <CardDescription>Add a photo of the items inside the box using your camera or by uploading an image.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <Input
@@ -212,10 +304,48 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
               ref={fileInputRef}
               id="photoUpload"
             />
-            <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
-              <Camera className="mr-2 h-4 w-4" /> {photoPreview ? 'Change Photo' : 'Upload Photo'}
-            </Button>
-            {photoPreview && (
+            <canvas ref={canvasRef} className="hidden"></canvas> {/* Hidden canvas for capturing frame */}
+
+            {!photoPreview && !isCameraOpen && (
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" onClick={openFileUpload}>
+                  <Camera className="mr-2 h-4 w-4" /> Upload Photo
+                </Button>
+                <Button type="button" variant="outline" onClick={openCamera}>
+                  <Video className="mr-2 h-4 w-4" /> Take Photo with Camera
+                </Button>
+              </div>
+            )}
+
+            {isCameraOpen && (
+              <div className="space-y-4">
+                <video ref={videoRef} className="w-full aspect-video rounded-md border bg-muted" autoPlay muted playsInline />
+                {hasCameraPermission === false && (
+                  <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Camera Access Denied</AlertTitle>
+                    <AlertDescription>
+                      Please allow camera access in your browser settings to use this feature. You might need to refresh the page after granting permission.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                 {hasCameraPermission === true && (
+                  <div className="flex gap-2">
+                    <Button type="button" onClick={handleCapturePhoto} disabled={!stream}>
+                      <Camera className="mr-2 h-4 w-4" /> Capture Photo
+                    </Button>
+                     <Button type="button" variant="outline" onClick={() => setIsCameraOpen(false)}>
+                      <XCircle className="mr-2 h-4 w-4" /> Cancel Camera
+                    </Button>
+                  </div>
+                )}
+                <Button type="button" variant="link" size="sm" onClick={() => { setIsCameraOpen(false); openFileUpload(); }}>
+                  Or Upload Photo Instead
+                </Button>
+              </div>
+            )}
+            
+            {photoPreview && !isCameraOpen && (
               <div className="mt-4 relative group">
                 <Image
                   src={photoPreview}
@@ -225,23 +355,41 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
                   className="rounded-md object-contain max-h-[300px] w-auto mx-auto border"
                   data-ai-hint="moving box items"
                 />
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="icon"
-                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={() => {
-                    setPhotoPreview(null);
-                    setPhotoFile(null);
-                    setAiTags([]);
-                    setAiSuggestedRoom(null);
-                    if(fileInputRef.current) fileInputRef.current.value = "";
-                  }}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <div className="absolute top-2 right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={openFileUpload} 
+                  >
+                    <Camera className="h-4 w-4" />
+                    <span className="sr-only">Change Photo (Upload)</span>
+                  </Button>
+                   <Button
+                    type="button"
+                    variant="secondary"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={openCamera}
+                  >
+                    <Video className="h-4 w-4" />
+                    <span className="sr-only">Change Photo (Camera)</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={removePhoto}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                     <span className="sr-only">Remove Photo</span>
+                  </Button>
+                </div>
               </div>
             )}
+
             {isTagging && (
               <div className="flex items-center text-sm text-muted-foreground">
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -279,8 +427,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
                       className="resize-y min-h-[100px]"
                       {...field}
                       onBlur={() => {
-                        // Suggest room when description changes and no AI tags triggered it yet
-                        if (!aiTags.length) {
+                        if (!aiTags.length && !photoPreview) { // Only trigger if no photo/tags yet
                            triggerAiRoomSuggestion(field.value || "");
                         }
                       }}
@@ -356,7 +503,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
           <Button type="button" variant="outline" onClick={() => router.back()}>
             Cancel
           </Button>
-          <Button type="submit" disabled={form.formState.isSubmitting || isTagging || isSuggestingRoom}>
+          <Button type="submit" disabled={form.formState.isSubmitting || isTagging || isSuggestingRoom || isCameraOpen && !hasCameraPermission}>
             {form.formState.isSubmitting ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
@@ -369,3 +516,4 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
     </Form>
   );
 }
+
