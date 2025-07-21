@@ -49,7 +49,7 @@ body {
   .dark {
     --background: 0 0% 3.9%; /* Near Black */
     --foreground: 0 0% 98%; /* Near White */
-    --card: 0 0% 9%; /* Very Dark Grey */
+    --card: 0 0% 12%; /* Dark Grey - Lighter for contrast */
     --card-foreground: 0 0% 98%; /* Near White */
     --popover: 0 0% 9%; /* Very Dark Grey */
     --popover-foreground: 0 0% 98%; /* Near White */
