@@ -13,8 +13,25 @@ export const metadata: Metadata = {
     template: `%s | ${siteConfig.name}`,
   },
   description: siteConfig.description,
-  // Add other metadata like icons if available
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'SmartMove',
+  },
+  formatDetection: {
+    telephone: false,
+  },
 };
+
+export function generateViewport() {
+  return {
+    themeColor: [
+      { media: '(prefers-color-scheme: light)', color: 'white' },
+      { media: '(prefers-color-scheme: dark)', color: 'black' },
+    ],
+  };
+}
 
 export default function RootLayout({
   children,
