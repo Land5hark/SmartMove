@@ -7,7 +7,7 @@
 2. Import project in Vercel dashboard
 3. Set environment variables:
    - `GOOGLE_CLOUD_PROJECT=triple-access-466622-j8`
-   - `GOOGLE_APPLICATION_CREDENTIALS` (paste JSON content)
+   - `GOOGLE_GENKIT_API_KEY` (your Google AI API key)
 4. Deploy automatically
 
 ### Option 2: Netlify
@@ -15,7 +15,7 @@
 2. Import project in Netlify dashboard
 3. Set environment variables:
    - `GOOGLE_CLOUD_PROJECT=triple-access-466622-j8`
-   - `GOOGLE_APPLICATION_CREDENTIALS` (paste JSON content)
+   - `GOOGLE_GENKIT_API_KEY` (your Google AI API key)
 4. Deploy automatically
 
 ## Environment Variables Required
@@ -28,7 +28,7 @@ Your project is already configured with service account authentication:
 
 For deployment, you'll need to set these environment variables:
 - `GOOGLE_CLOUD_PROJECT=triple-access-466622-j8`
-- `GOOGLE_APPLICATION_CREDENTIALS` (service account JSON content)
+- `GOOGLE_GENKIT_API_KEY` (your Google AI API key from Google AI Studio)
 
 ## Pre-Deployment Checklist
 
