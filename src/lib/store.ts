@@ -131,7 +131,7 @@ export function saveBox(boxData: Omit<Box, 'createdAt' | 'qrCodeValue'> & { id?:
   
   saveMetadataBoxesToStorage(allBoxesMeta.map(b => {
     // Ensure we are only saving metadata properties
-    const { photoDataUrl, ...metaOnly } = b;
+    const { photoDataUrl, ...metaOnly } = b as any;
     return metaOnly;
   }));
 

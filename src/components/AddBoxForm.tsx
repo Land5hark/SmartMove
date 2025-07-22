@@ -242,7 +242,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
 
   const onSubmit = (data: AddBoxFormValues) => {
     const boxToSave: Omit<Box, 'createdAt' | 'qrCodeValue'> & { id?: string } = {
-      id: data.id || existingBox?.id,
+      id: data.id || existingBox?.id || generateUniqueId(),
       manualDescription: data.manualDescription,
       assignedRoom: data.assignedRoom,
       photoDataUrl: photoPreview || undefined,
