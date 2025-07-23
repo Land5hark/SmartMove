@@ -75,16 +75,6 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
     let localStream: MediaStream | null = null;
 
     const getCameraStream = async () => {
-      // Stop any existing stream before getting a new one
-      if (stream) {
-          stream.getTracks().forEach(track => track.stop());
-          setStream(null);
-      }
-      if (videoRef.current && videoRef.current.srcObject) {
-          (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
-          videoRef.current.srcObject = null;
-      }
-
       if (isCameraOpen) {
         try {
           const mediaStream = await navigator.mediaDevices.getUserMedia({
