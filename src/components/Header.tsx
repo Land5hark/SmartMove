@@ -1,11 +1,15 @@
+'use client';
 
 import Link from 'next/link';
-import { PackageSearch, FileText } from 'lucide-react'; // Using PackageSearch as a generic "box/inventory" icon
+import { FileText, LogIn, LogOut, PackageSearch } from 'lucide-react';
 import { siteConfig } from '@/config/site';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ThemeToggle'; 
+import { useAuth } from '@/lib/auth';
 
 export function Header() {
+  const { loading, user, signOut } = useAuth();
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-14 max-w-screen-2xl items-center">
@@ -26,9 +30,24 @@ export function Header() {
         </nav>
         <div className="flex items-center space-x-2">
           <ThemeToggle /> 
-          <Button asChild>
-            <Link href="/add-box">Add New Box</Link>
-          </Button>
+          {!loading && user ? (
+            <>
+              <Button asChild>
+                <Link href="/add-box">Add New Box</Link>
+              </Button>
+              <Button variant="outline" onClick={() => void signOut()}>
+                <LogOut className="mr-2 h-4 w-4" />
+                Sign Out
+              </Button>
+            </>
+          ) : (
+            <Button asChild>
+              <Link href="/login">
+                <LogIn className="mr-2 h-4 w-4" />
+                Sign In
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
     </header>

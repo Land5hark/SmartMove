@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { siteConfig } from '@/config/site';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { AuthProvider } from '@/lib/auth';
 
 export const metadata: Metadata = {
   title: {
@@ -32,7 +33,9 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <ErrorBoundary>
-            {children}
+            <AuthProvider>
+              {children}
+            </AuthProvider>
           </ErrorBoundary>
           <Toaster />
         </ThemeProvider>

@@ -6,29 +6,30 @@
 1. Push code to GitHub repository
 2. Import project in Vercel dashboard
 3. Set environment variables:
-   - `GOOGLE_CLOUD_PROJECT=triple-access-466622-j8`
-   - `GOOGLE_GENKIT_API_KEY` (your Google AI API key)
+   - `GEMINI_API_KEY` (your Google AI API key)
+   - `NEXT_PUBLIC_FIREBASE_*` values from your Firebase web app config
 4. Deploy automatically
 
 ### Option 2: Netlify
 1. Push code to GitHub repository  
 2. Import project in Netlify dashboard
 3. Set environment variables:
-   - `GOOGLE_CLOUD_PROJECT=triple-access-466622-j8`
-   - `GOOGLE_GENKIT_API_KEY` (your Google AI API key)
+   - `GEMINI_API_KEY` (your Google AI API key)
+   - `NEXT_PUBLIC_FIREBASE_*` values from your Firebase web app config
 4. Deploy automatically
 
 ## Environment Variables Required
 
-### Google Service Account (Configured)
-Your project is already configured with service account authentication:
-
-- **Project ID:** `triple-access-466622-j8`
-- **Service Account:** `smart-move-assist-api@triple-access-466622-j8.iam.gserviceaccount.com`
-
-For deployment, you'll need to set these environment variables:
-- `GOOGLE_CLOUD_PROJECT=triple-access-466622-j8`
-- `GOOGLE_GENKIT_API_KEY` (your Google AI API key from Google AI Studio)
+### Required Runtime Configuration
+For deployment, set:
+- `GEMINI_API_KEY` (your Google AI API key from Google AI Studio)
+- `NEXT_PUBLIC_APP_URL` (your deployed web URL)
+- `NEXT_PUBLIC_FIREBASE_API_KEY`
+- `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
+- `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
+- `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
+- `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
+- `NEXT_PUBLIC_FIREBASE_APP_ID`
 
 ## Pre-Deployment Checklist
 

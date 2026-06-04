@@ -8,40 +8,24 @@
  * - SuggestRoomPlacementOutput - The return type for the suggestRoomPlacement function.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import { generateGeminiJson } from '@/ai/google-gemini';
 
-const SuggestRoomPlacementInputSchema = z.object({
-  itemDescription: z
-    .string()
-    .describe('A description of the items in the box.'),
-});
-export type SuggestRoomPlacementInput = z.infer<typeof SuggestRoomPlacementInputSchema>;
+export type SuggestRoomPlacementInput = {
+  itemDescription: string;
+};
 
-const SuggestRoomPlacementOutputSchema = z.object({
-  suggestedRoom: z.string().describe('The suggested room for the box based on its contents.'),
-});
-export type SuggestRoomPlacementOutput = z.infer<typeof SuggestRoomPlacementOutputSchema>;
+export type SuggestRoomPlacementOutput = {
+  suggestedRoom: string;
+};
 
 export async function suggestRoomPlacement(input: SuggestRoomPlacementInput): Promise<SuggestRoomPlacementOutput> {
-  return suggestRoomPlacementFlow(input);
-}
+  const result = await generateGeminiJson<{ suggestedRoom?: unknown }>({
+    prompt: `Suggest the most appropriate room for these moving box contents. Return only JSON: {"suggestedRoom":"Kitchen"}.\n\nItems: ${input.itemDescription}`,
+  });
 
-const prompt = ai.definePrompt({
-  name: 'suggestRoomPlacementPrompt',
-  input: {schema: SuggestRoomPlacementInputSchema},
-  output: {schema: SuggestRoomPlacementOutputSchema},
-  prompt: `You are an AI assistant that suggests the most appropriate room in a house for a box of items, given a description of the items.\n\nSuggest a single room, and nothing else.  For example: "kitchen" or "bedroom 2".\n\nItems: {{{itemDescription}}}`,
-});
-
-const suggestRoomPlacementFlow = ai.defineFlow(
-  {
-    name: 'suggestRoomPlacementFlow',
-    inputSchema: SuggestRoomPlacementInputSchema,
-    outputSchema: SuggestRoomPlacementOutputSchema,
-  },
-  async input => {
-    const {output} = await prompt(input);
-    return output!;
+  if (typeof result.suggestedRoom !== 'string' || !result.suggestedRoom.trim()) {
+    throw new Error('AI room suggestion returned an empty response.');
   }
-);
+
+  return { suggestedRoom: result.suggestedRoom.trim() };
+}

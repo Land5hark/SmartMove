@@ -10,8 +10,9 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import type { Box } from '@/types';
-import { getBox, deleteBox } from '@/lib/store';
+import { deleteBox, getBox } from '@/lib/firebase-boxes';
 import { ArrowLeft, Edit3, Printer, Trash2, QrCode, Package, MapPin, Info, CalendarDays } from 'lucide-react';
+import { useAuth } from '@/lib/auth';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,15 +34,21 @@ export function BoxDetailClient({ boxId }: BoxDetailClientProps) {
   const [box, setBox] = useState<Box | null | undefined>(undefined); // undefined for loading, null for not found
   const router = useRouter();
   const { toast } = useToast();
+  const { loading: authLoading, user } = useAuth();
 
   useEffect(() => {
-    const fetchedBox = getBox(boxId);
-    setBox(fetchedBox || null);
-  }, [boxId]);
+    if (authLoading) return;
+    if (!user) {
+      setBox(null);
+      return;
+    }
+    void getBox(user.uid, boxId).then(fetchedBox => setBox(fetchedBox || null));
+  }, [authLoading, boxId, user]);
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (box) {
-      deleteBox(box.id);
+      if (!user) return;
+      await deleteBox(user.uid, box.id);
       toast({
         title: 'Box Deleted',
         description: `Box #${box.id.substring(0,6)} has been deleted.`,
@@ -65,7 +72,7 @@ export function BoxDetailClient({ boxId }: BoxDetailClientProps) {
           <CardTitle className="text-2xl">Box Not Found</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground mb-6">The box with ID "{boxId}" could not be found.</p>
+          <p className="text-muted-foreground mb-6">The box with ID &quot;{boxId}&quot; could not be found.</p>
           <Button asChild>
             <Link href="/">
               <ArrowLeft className="mr-2 h-4 w-4" /> Go Back to Dashboard
@@ -103,11 +110,11 @@ export function BoxDetailClient({ boxId }: BoxDetailClientProps) {
           </div>
         </CardHeader>
 
-        {box.photoDataUrl && (
+        {(box.photoUrl || box.photoDataUrl) && (
           <div className="p-6 border-b">
             <h3 className="text-lg font-semibold mb-2">Photo of Contents</h3>
             <Image
-              src={box.photoDataUrl}
+              src={box.photoUrl || box.photoDataUrl || ''}
               alt={`Contents of box ${box.id}`}
               width={600}
               height={400}
@@ -158,8 +165,10 @@ export function BoxDetailClient({ boxId }: BoxDetailClientProps) {
               <Printer className="mr-2 h-4 w-4" /> Print Label / Summary
             </Link>
           </Button>
-          <Button variant="secondary" disabled> {/* Edit functionality could be added later */}
-            <Edit3 className="mr-2 h-4 w-4" /> Edit Box (Soon)
+          <Button variant="secondary" asChild>
+            <Link href={`/box/${box.id}/edit`}>
+              <Edit3 className="mr-2 h-4 w-4" /> Edit Box
+            </Link>
           </Button>
            <AlertDialog>
             <AlertDialogTrigger asChild>

@@ -26,10 +26,12 @@ import Image from 'next/image';
 import { Loader2, Camera, CheckCircle, AlertTriangle, Wand2, Trash2, Video, XCircle, SwitchCamera } from 'lucide-react';
 import type { Box, Room } from '@/types';
 import { ROOM_OPTIONS } from '@/types';
-import { saveBox, generateUniqueId } from '@/lib/store';
+import { generateUniqueId } from '@/lib/store';
+import { saveBox } from '@/lib/firebase-boxes';
 import { generateItemTags } from '@/ai/flows/generate-item-tags';
 import { suggestRoomPlacement } from '@/ai/flows/suggest-room-placement';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { useAuth } from '@/lib/auth';
 
 const addBoxFormSchema = z.object({
   id: z.string().optional(),
@@ -45,7 +47,8 @@ const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
   const { toast } = useToast();
   const router = useRouter();
-  const [photoPreview, setPhotoPreview] = useState<string | null>(existingBox?.photoDataUrl || null);
+  const { user } = useAuth();
+  const [photoPreview, setPhotoPreview] = useState<string | null>(existingBox?.photoDataUrl || existingBox?.photoUrl || null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [isTagging, setIsTagging] = useState(false);
   const [isSuggestingRoom, setIsSuggestingRoom] = useState(false);
@@ -55,6 +58,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
@@ -73,16 +77,18 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
 
   useEffect(() => {
     let localStream: MediaStream | null = null;
+    const videoElement = videoRef.current;
 
     const getCameraStream = async () => {
       // Stop any existing stream before getting a new one
-      if (stream) {
-          stream.getTracks().forEach(track => track.stop());
+      if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+          streamRef.current = null;
           setStream(null);
       }
-      if (videoRef.current && videoRef.current.srcObject) {
-          (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
-          videoRef.current.srcObject = null;
+      if (videoElement && videoElement.srcObject) {
+          (videoElement.srcObject as MediaStream).getTracks().forEach(track => track.stop());
+          videoElement.srcObject = null;
       }
 
       if (isCameraOpen) {
@@ -91,10 +97,11 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
             video: { facingMode: currentFacingMode }
           });
           localStream = mediaStream;
+          streamRef.current = mediaStream;
           setStream(mediaStream);
           setHasCameraPermission(true);
-          if (videoRef.current) {
-            videoRef.current.srcObject = mediaStream;
+          if (videoElement) {
+            videoElement.srcObject = mediaStream;
           }
         } catch (error) {
           console.error('Error accessing camera:', error);
@@ -115,13 +122,14 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
       if (localStream) {
         localStream.getTracks().forEach(track => track.stop());
       }
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
         setStream(null);
       }
-      if (videoRef.current && videoRef.current.srcObject) {
-          (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
-          videoRef.current.srcObject = null;
+      if (videoElement && videoElement.srcObject) {
+          (videoElement.srcObject as MediaStream).getTracks().forEach(track => track.stop());
+          videoElement.srcObject = null;
       }
     };
   }, [isCameraOpen, currentFacingMode, toast]);
@@ -240,28 +248,48 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
     }
   };
 
-  const onSubmit = (data: AddBoxFormValues) => {
+  const onSubmit = async (data: AddBoxFormValues) => {
+    if (!user) {
+      toast({
+        title: 'Sign in required',
+        description: 'Please sign in before saving boxes.',
+        variant: 'destructive',
+      });
+      router.push('/login');
+      return;
+    }
+
     const boxToSave: Omit<Box, 'createdAt' | 'qrCodeValue'> & { id?: string } = {
       id: data.id || existingBox?.id || generateUniqueId(),
       manualDescription: data.manualDescription,
       assignedRoom: data.assignedRoom,
-      photoDataUrl: photoPreview || undefined,
+      photoDataUrl: photoPreview?.startsWith('data:') ? photoPreview : undefined,
+      photoUrl: photoPreview && !photoPreview.startsWith('data:') ? photoPreview : existingBox?.photoUrl,
+      photoPath: existingBox?.photoPath,
       aiGeneratedTags: aiTags,
       suggestedRoom: aiSuggestedRoom || undefined,
-      items: [],
+      items: existingBox?.items || [],
     };
 
-    const savedBox = saveBox(boxToSave);
-    toast({
-      title: existingBox ? 'Box Updated!' : 'Box Added!',
-      description: `Box #${savedBox.id.substring(0,6)} has been successfully ${existingBox ? 'updated' : 'saved'}.`,
-      action: (
-        <Button variant="outline" size="sm" onClick={() => router.push(`/box/${savedBox.id}`)}>
-          View Box
-        </Button>
-      ),
-    });
-    router.push('/');
+    try {
+      const savedBox = await saveBox(user.uid, { ...boxToSave, id: boxToSave.id || generateUniqueId() });
+      toast({
+        title: existingBox ? 'Box Updated!' : 'Box Added!',
+        description: `Box #${savedBox.id.substring(0,6)} has been successfully ${existingBox ? 'updated' : 'saved'}.`,
+        action: (
+          <Button variant="outline" size="sm" onClick={() => router.push(`/box/${savedBox.id}`)}>
+            View Box
+          </Button>
+        ),
+      });
+      router.push('/');
+    } catch (saveError) {
+      toast({
+        title: 'Could not save box',
+        description: saveError instanceof Error ? saveError.message : 'Please try again.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const openCamera = () => {

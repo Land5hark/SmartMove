@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -21,6 +22,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { LogIn } from 'lucide-react';
 import { siteConfig } from '@/config/site';
+import { useAuth } from '@/lib/auth';
 
 const loginFormSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
@@ -32,6 +34,8 @@ type LoginFormValues = z.infer<typeof loginFormSchema>;
 export default function LoginPage() {
   const { toast } = useToast();
   const router = useRouter();
+  const { configured, signIn, signUp } = useAuth();
+  const [mode, setMode] = useState<'sign-in' | 'sign-up'>('sign-in');
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginFormSchema),
@@ -41,16 +45,25 @@ export default function LoginPage() {
     },
   });
 
-  const onSubmit = (data: LoginFormValues) => {
-    console.log('Login submitted:', data);
-    // Simulate API call
-    toast({
-      title: 'Login Successful!',
-      description: `Welcome back to ${siteConfig.name}. Redirecting...`,
-    });
-    // In a real app, you'd handle authentication here and then redirect.
-    // For the prototype, we'll just redirect to the homepage.
-    router.push('/');
+  const onSubmit = async (data: LoginFormValues) => {
+    try {
+      if (mode === 'sign-up') {
+        await signUp(data.email, data.password);
+      } else {
+        await signIn(data.email, data.password);
+      }
+      toast({
+        title: mode === 'sign-up' ? 'Account created' : 'Signed in',
+        description: `Welcome to ${siteConfig.name}.`,
+      });
+      router.push('/');
+    } catch (error) {
+      toast({
+        title: 'Authentication failed',
+        description: error instanceof Error ? error.message : 'Please check your credentials and try again.',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
@@ -64,6 +77,11 @@ export default function LoginPage() {
           <CardDescription>Enter your credentials to access your account.</CardDescription>
         </CardHeader>
         <CardContent>
+          {!configured && (
+            <p className="mb-4 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+              Firebase is not configured. Set the NEXT_PUBLIC_FIREBASE_* variables before signing in.
+            </p>
+          )}
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField
@@ -97,18 +115,22 @@ export default function LoginPage() {
                   Forgot password?
                 </Link>
               </div>
-              <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? 'Signing In...' : 'Sign In'}
+              <Button type="submit" className="w-full" disabled={form.formState.isSubmitting || !configured}>
+                {form.formState.isSubmitting ? 'Working...' : mode === 'sign-up' ? 'Create Account' : 'Sign In'}
               </Button>
             </form>
           </Form>
         </CardContent>
         <CardContent className="mt-0 border-t pt-6 text-center">
             <p className="text-sm text-muted-foreground">
-              New user?{' '}
-              <Link href="#" className="font-medium text-primary hover:underline">
-                Register here
-              </Link>
+              {mode === 'sign-in' ? 'New user?' : 'Already have an account?'}{' '}
+              <button
+                type="button"
+                className="font-medium text-primary hover:underline"
+                onClick={() => setMode(mode === 'sign-in' ? 'sign-up' : 'sign-in')}
+              >
+                {mode === 'sign-in' ? 'Register here' : 'Sign in instead'}
+              </button>
             </p>
         </CardContent>
       </Card>

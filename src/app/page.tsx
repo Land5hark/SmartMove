@@ -3,16 +3,18 @@
 
 import type { NextPage } from 'next';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image'; 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PlusCircle, Search, Package, MapPin, QrCode } from 'lucide-react';
+import { Loader2, PlusCircle, Search, Package, MapPin, QrCode, UploadCloud } from 'lucide-react';
 import type { Box } from '@/types';
-import { getBoxes } from '@/lib/store';
+import { getBoxes as getLegacyBoxes } from '@/lib/store';
+import { importLegacyBox, listBoxes } from '@/lib/firebase-boxes';
+import { useAuth } from '@/lib/auth';
 
 const BoxCard: React.FC<{ box: Box }> = ({ box }) => {
   return (
@@ -33,10 +35,10 @@ const BoxCard: React.FC<{ box: Box }> = ({ box }) => {
         </CardDescription>
       </CardHeader>
       <CardContent className="flex-grow">
-        {box.photoDataUrl ? (
+        {box.photoUrl || box.photoDataUrl ? (
           <div className="mb-2 aspect-video w-full rounded-md bg-muted relative overflow-hidden">
             <Image
-              src={box.photoDataUrl}
+              src={box.photoUrl || box.photoDataUrl || ''}
               alt={`Contents of box ${box.id.substring(0, 6)}`}
               layout="fill"
               objectFit="cover"
@@ -71,12 +73,37 @@ const BoxCard: React.FC<{ box: Box }> = ({ box }) => {
 
 const Home: NextPage = () => {
   const [boxes, setBoxes] = useState<Box[]>([]);
+  const [legacyBoxes, setLegacyBoxes] = useState<Box[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [scanInput, setScanInput] = useState('');
   const router = useRouter();
+  const { configured, loading: authLoading, user } = useAuth();
+
+  const loadBoxes = useCallback(async () => {
+    if (authLoading) return;
+    if (!configured || !user) {
+      setBoxes([]);
+      setLegacyBoxes(getLegacyBoxes());
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+      setBoxes(await listBoxes(user.uid));
+      setLegacyBoxes(getLegacyBoxes());
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Could not load boxes.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [authLoading, configured, user]);
 
   useEffect(() => {
-    setBoxes(getBoxes());
-  }, []);
+    void loadBoxes();
+  }, [loadBoxes]);
 
   const handleScanSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,6 +111,35 @@ const Home: NextPage = () => {
       router.push(`/box/${scanInput.trim()}`);
     }
   };
+
+  const handleImportLegacy = async () => {
+    if (!user) return;
+    setIsLoading(true);
+    try {
+      await Promise.all(legacyBoxes.map(box => importLegacyBox(user.uid, box)));
+      await loadBoxes();
+    } catch (importError) {
+      setError(importError instanceof Error ? importError.message : 'Could not import local boxes.');
+      setIsLoading(false);
+    }
+  };
+
+  if (!authLoading && !user) {
+    return (
+      <div className="container mx-auto max-w-4xl py-16 px-4">
+        <Card className="text-center py-12 shadow-lg">
+          <CardContent>
+            <Package className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
+            <p className="text-xl font-medium text-muted-foreground">Sign in to manage your move.</p>
+            <p className="text-muted-foreground mb-6">Your boxes, photos, and labels will sync across web and Android.</p>
+            <Button asChild size="lg">
+              <Link href="/login">Sign In</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto max-w-4xl py-8 px-4">
@@ -123,7 +179,32 @@ const Home: NextPage = () => {
           </Button>
         </div>
 
-        {boxes.length === 0 ? (
+        {error && (
+          <Card className="mb-6 border-destructive/50">
+            <CardContent className="py-4 text-sm text-destructive">{error}</CardContent>
+          </Card>
+        )}
+
+        {legacyBoxes.length > 0 && (
+          <Card className="mb-6">
+            <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-muted-foreground">
+                Found {legacyBoxes.length} local prototype {legacyBoxes.length === 1 ? 'box' : 'boxes'} that can be imported to Firebase.
+              </p>
+              <Button type="button" variant="outline" onClick={handleImportLegacy} disabled={isLoading}>
+                <UploadCloud className="mr-2 h-4 w-4" />
+                Import Local Boxes
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {isLoading ? (
+          <div className="flex min-h-40 items-center justify-center text-muted-foreground">
+            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+            Loading boxes...
+          </div>
+        ) : boxes.length === 0 ? (
           <Card className="text-center py-12 shadow-lg">
             <CardContent>
               <Package className="mx-auto h-16 w-16 text-muted-foreground mb-4" />

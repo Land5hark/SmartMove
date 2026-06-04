@@ -6,10 +6,11 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import type { Box } from '@/types';
-import { getBox } from '@/lib/store';
+import { getBox } from '@/lib/firebase-boxes';
 import { ArrowLeft, Printer, Package, MapPin, Info, CalendarDays } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react'; // Import QRCodeCanvas
-import { siteConfig } from '@/config/site'; // Import siteConfig
+import { getBoxUrl } from '@/lib/app-url';
+import { useAuth } from '@/lib/auth';
 
 interface PrintViewClientProps {
   boxId: string;
@@ -17,11 +18,16 @@ interface PrintViewClientProps {
 
 export function PrintViewClient({ boxId }: PrintViewClientProps) {
   const [box, setBox] = useState<Box | null | undefined>(undefined);
+  const { loading: authLoading, user } = useAuth();
 
   useEffect(() => {
-    const fetchedBox = getBox(boxId);
-    setBox(fetchedBox || null);
-  }, [boxId]);
+    if (authLoading) return;
+    if (!user) {
+      setBox(null);
+      return;
+    }
+    void getBox(user.uid, boxId).then(fetchedBox => setBox(fetchedBox || null));
+  }, [authLoading, boxId, user]);
 
   const handlePrint = () => {
     window.print();
@@ -35,7 +41,7 @@ export function PrintViewClient({ boxId }: PrintViewClientProps) {
     return <div className="p-8 text-center text-red-500">Box not found. Cannot generate print view.</div>;
   }
 
-  const boxUrl = `${siteConfig.url}/box/${box.id}`;
+  const boxUrl = getBoxUrl(box.id);
 
   return (
     <>
@@ -112,12 +118,12 @@ export function PrintViewClient({ boxId }: PrintViewClientProps) {
             </div>
           </section>
 
-          {box.photoDataUrl && (
+          {(box.photoUrl || box.photoDataUrl) && (
             <section className="mb-8">
               <h2 className="text-2xl font-semibold mb-3 text-primary">Photo of Contents</h2>
               <div className="border border-gray-300 rounded-md overflow-hidden p-2 bg-gray-50">
                 <Image
-                  src={box.photoDataUrl}
+                  src={box.photoUrl || box.photoDataUrl || ''}
                   alt={`Contents of box ${box.id}`}
                   width={700}
                   height={450}
