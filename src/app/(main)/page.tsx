@@ -95,18 +95,32 @@ const Home: NextPage = () => {
 
   if (!user) {
     return (
-      <div className="flex min-h-[80vh] flex-col items-center justify-center px-6 text-center">
-        <div className="relative mb-6">
-          <div className="absolute inset-0 -m-8 rounded-full bg-gradient-hero opacity-20 blur-3xl" />
-          <Package className="relative h-20 w-20 text-primary" />
+      <div className="relative flex min-h-[calc(100dvh-80px)] flex-col overflow-hidden">
+        {/* Full-bleed splash art */}
+        <div className="absolute inset-0">
+          <Image
+            src="/logo-full.png"
+            alt="SmartMove"
+            fill
+            className="object-cover object-top"
+            priority
+          />
+          {/* Gradient overlay for button legibility */}
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
         </div>
-        <h1 className="mb-2 text-2xl font-bold">SmartMove</h1>
-        <p className="mb-8 text-sm leading-relaxed text-muted-foreground">
-          AI remembers what&apos;s in every box so you don&apos;t have to.
-        </p>
-        <Button asChild size="lg">
-          <Link href="/login">Sign In</Link>
-        </Button>
+
+        {/* CTA pinned to bottom */}
+        <div className="relative mt-auto px-6 pb-10 text-center">
+          <Button asChild size="lg" className="w-full text-base font-bold">
+            <Link href="/login">Get Started</Link>
+          </Button>
+          <Link
+            href="/login"
+            className="mt-4 block text-sm text-foreground/60 transition-colors hover:text-foreground"
+          >
+            Log In
+          </Link>
+        </div>
       </div>
     );
   }
@@ -115,11 +129,14 @@ const Home: NextPage = () => {
     <div className="px-4 pb-4 pt-6">
       {/* Page header */}
       <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold gradient-text-primary">SmartMove</h1>
-          <p className="text-xs text-muted-foreground">
-            {boxes.length} {boxes.length === 1 ? "box" : "boxes"} packed
-          </p>
+        <div className="flex items-center gap-2">
+          <Image src="/logo-icon.png" alt="SmartMove" width={36} height={36} className="rounded-lg" />
+          <div>
+            <h1 className="text-lg font-bold gradient-text-primary leading-none">SmartMove</h1>
+            <p className="text-xs text-muted-foreground">
+              {boxes.length} {boxes.length === 1 ? "box" : "boxes"} packed
+            </p>
+          </div>
         </div>
         <Button asChild size="icon" variant="outline" className="rounded-full">
           <Link href="/add-box">

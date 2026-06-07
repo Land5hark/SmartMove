@@ -17,12 +17,11 @@ import {
     FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { siteConfig } from "@/config/site";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { LogIn } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -71,10 +70,21 @@ export default function LoginPage() {
   return (
     <div className="container mx-auto flex min-h-[calc(100vh-8rem)] items-center justify-center py-12 px-4">
       <Card className="w-full max-w-md shadow-xl">
-        <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-bold flex items-center justify-center">
-            <LogIn className="mr-2 h-7 w-7 text-primary" />
-            {mode === "signin" ? `Sign In to ${siteConfig.name}` : `Create Account`}
+        <CardHeader className="text-center pb-2">
+          <div className="mb-4 flex justify-center">
+            <div className="h-24 w-24 overflow-hidden rounded-2xl glow-pink">
+              <Image
+                src="/logo-icon.png"
+                alt="SmartMove"
+                width={96}
+                height={96}
+                className="h-full w-full object-cover"
+                priority
+              />
+            </div>
+          </div>
+          <CardTitle className="text-2xl font-bold">
+            {mode === "signin" ? "Sign In" : "Create Account"}
           </CardTitle>
           <CardDescription>
             {mode === "signin"
