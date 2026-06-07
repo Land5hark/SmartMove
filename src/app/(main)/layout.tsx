@@ -1,5 +1,4 @@
-import { Footer } from "@/components/Footer";
-import { Header } from "@/components/Header";
+import { BottomNav } from "@/components/BottomNav";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -8,9 +7,8 @@ interface MainLayoutProps {
 export default function MainLayout({ children }: MainLayoutProps) {
   return (
     <div className="flex min-h-screen flex-col">
-      <Header />
-      <main className="flex-1">{children}</main>
-      <Footer />
+      <main className="flex-1 pb-24">{children}</main>
+      <BottomNav />
     </div>
   );
 }

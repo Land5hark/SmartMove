@@ -1,0 +1,35 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - main [ref=e3]:
+      - generic [ref=e4]:
+        - img [ref=e7]
+        - heading "SmartMove" [level=1] [ref=e11]
+        - paragraph [ref=e12]: AI remembers what's in every box so you don't have to.
+        - link "Sign In" [ref=e13] [cursor=pointer]:
+          - /url: /login
+    - navigation [ref=e14]:
+      - generic [ref=e15]:
+        - link "Home" [ref=e16] [cursor=pointer]:
+          - /url: /
+          - img [ref=e17]
+          - generic [ref=e20]: Home
+        - link "Boxes" [ref=e21] [cursor=pointer]:
+          - /url: /boxes
+          - img [ref=e22]
+          - generic [ref=e26]: Boxes
+        - link "Scan" [ref=e27] [cursor=pointer]:
+          - /url: /add-box
+          - img [ref=e29]
+          - generic [ref=e34]: Scan
+        - link "Timeline" [ref=e35] [cursor=pointer]:
+          - /url: /documentation
+          - img [ref=e36]
+          - generic [ref=e38]: Timeline
+        - button "Sign In" [ref=e39] [cursor=pointer]:
+          - img [ref=e40]
+          - generic [ref=e43]: Sign In
+  - region "Notifications (F8)":
+    - list
+  - button "Open Next.js Dev Tools" [ref=e49] [cursor=pointer]:
+    - img [ref=e50]
+  - alert [ref=e53]

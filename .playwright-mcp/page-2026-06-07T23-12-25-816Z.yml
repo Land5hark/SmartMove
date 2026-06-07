@@ -1,0 +1,75 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - main [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - heading "New Box" [level=1] [ref=e6]
+          - paragraph [ref=e7]: Point your camera — AI detects everything.
+        - generic [ref=e8]:
+          - generic [ref=e9]:
+            - generic [ref=e10]:
+              - generic [ref=e11]: Box Identifier
+              - generic [ref=e12]: Unique ID for your box. This will be part of the QR code.
+            - generic [ref=e14]:
+              - text: Box ID
+              - textbox "Box ID" [ref=e15]:
+                - /placeholder: e.g., KITCH001 or unique hash
+                - text: mq4ed6zv
+              - paragraph [ref=e16]: A unique ID for this box. Keep it short if handwriting.
+          - generic [ref=e17]:
+            - generic [ref=e18]:
+              - generic [ref=e19]: Box Contents Photo
+              - generic [ref=e20]: Add a photo of the items inside the box using your camera or by uploading an image.
+            - generic [ref=e22]:
+              - button "Tap to open camera AI will detect items automatically" [ref=e23] [cursor=pointer]:
+                - generic [ref=e25]:
+                  - img [ref=e27]
+                  - generic [ref=e30]: Tap to open camera
+                  - generic [ref=e31]: AI will detect items automatically
+              - button "or upload from library" [ref=e32] [cursor=pointer]
+          - generic [ref=e33]:
+            - generic [ref=e34]:
+              - generic [ref=e35]: Item Details
+              - generic [ref=e36]: Add manual notes about the contents, especially for fragile or important items.
+            - generic [ref=e38]:
+              - text: Manual Notes / Description
+              - textbox "Manual Notes / Description" [ref=e39]:
+                - /placeholder: e.g., Fragile glassware, important documents, electronics chargers...
+          - generic [ref=e40]:
+            - generic [ref=e41]:
+              - generic [ref=e42]: Room Assignment
+              - generic [ref=e43]: Assign this box to a room in your new place.
+            - generic [ref=e45]:
+              - text: Assigned Room
+              - combobox "Assigned Room" [ref=e46] [cursor=pointer]:
+                - generic: Select a room
+                - img [ref=e47]
+              - combobox [ref=e49]
+          - generic [ref=e50]:
+            - button "Cancel" [ref=e51] [cursor=pointer]
+            - button "Save Box" [ref=e52] [cursor=pointer]
+    - navigation [ref=e53]:
+      - generic [ref=e54]:
+        - link "Home" [ref=e55] [cursor=pointer]:
+          - /url: /
+          - img [ref=e56]
+          - generic [ref=e59]: Home
+        - link "Boxes" [ref=e60] [cursor=pointer]:
+          - /url: /boxes
+          - img [ref=e61]
+          - generic [ref=e65]: Boxes
+        - link "Scan" [ref=e66] [cursor=pointer]:
+          - /url: /add-box
+          - img [ref=e68]
+          - generic [ref=e73]: Scan
+        - link "Timeline" [ref=e74] [cursor=pointer]:
+          - /url: /documentation
+          - img [ref=e75]
+          - generic [ref=e77]: Timeline
+        - button "Sign In" [ref=e78] [cursor=pointer]:
+          - img [ref=e79]
+          - generic [ref=e82]: Sign In
+  - region "Notifications (F8)":
+    - list
+  - button "Open Next.js Dev Tools" [ref=e88] [cursor=pointer]:
+    - img [ref=e89]

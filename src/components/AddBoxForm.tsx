@@ -3,7 +3,6 @@
 import { generateItemTags } from "@/ai/flows/generate-item-tags";
 import { suggestRoomPlacement } from "@/ai/flows/suggest-room-placement";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
     Card,
@@ -411,26 +410,37 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
             <canvas ref={canvasRef} className="hidden"></canvas>
 
             {!photoPreview && !isCameraOpen && (
-              <div className="flex gap-2 flex-wrap">
-                <Button
+              <div className="flex flex-col items-center gap-3">
+                <button
                   type="button"
-                  variant="outline"
-                  onClick={openFileUpload}
+                  onClick={openCamera}
+                  className="group relative flex h-48 w-full items-center justify-center rounded-card border-2 border-dashed border-primary/30 bg-secondary/30 transition-colors hover:border-primary/60 hover:bg-secondary/50"
                 >
-                  <Camera className="mr-2 h-4 w-4" /> Upload Photo
-                </Button>
-                <Button type="button" variant="outline" onClick={openCamera}>
-                  <Video className="mr-2 h-4 w-4" /> Take Photo with Camera
-                </Button>
+                  <div className="absolute inset-0 rounded-card bg-gradient-hero opacity-0 blur-xl transition-opacity group-hover:opacity-10" />
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-pink-cyan glow-pink">
+                      <Camera className="h-7 w-7 text-midnight" />
+                    </div>
+                    <span className="text-sm font-medium text-foreground">Tap to open camera</span>
+                    <span className="text-xs text-muted-foreground">AI will detect items automatically</span>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={openFileUpload}
+                  className="text-xs text-muted-foreground underline underline-offset-2"
+                >
+                  or upload from library
+                </button>
               </div>
             )}
 
             {isCameraOpen && (
               <div className="space-y-4">
-                <div className="relative">
+                <div className="relative overflow-hidden rounded-card">
                   <video
                     ref={videoRef}
-                    className="w-full aspect-video rounded-md border bg-muted"
+                    className="w-full aspect-[3/4] rounded-card bg-black object-cover"
                     autoPlay
                     muted
                     playsInline
@@ -440,7 +450,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
                     variant="outline"
                     size="icon"
                     onClick={handleFlipCamera}
-                    className="absolute top-2 right-2 bg-black/50 hover:bg-black/70 text-white"
+                    className="absolute top-3 right-3 rounded-full bg-background/60 backdrop-blur-sm"
                     title="Flip Camera"
                   >
                     <SwitchCamera className="h-5 w-5" />
@@ -457,36 +467,37 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
                     </AlertDescription>
                   </Alert>
                 )}
-                {hasCameraPermission === true && (
-                  <div className="flex gap-2 flex-wrap">
-                    <Button
-                      type="button"
-                      onClick={handleCapturePhoto}
-                      disabled={!stream}
-                    >
-                      <Camera className="mr-2 h-4 w-4" /> Capture Photo
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setIsCameraOpen(false)}
-                    >
-                      <XCircle className="mr-2 h-4 w-4" /> Cancel Camera
-                    </Button>
-                  </div>
-                )}
-                <Button
-                  type="button"
-                  variant="link"
-                  size="sm"
-                  className="p-0 h-auto"
-                  onClick={() => {
-                    setIsCameraOpen(false);
-                    openFileUpload();
-                  }}
-                >
-                  Or Upload Photo Instead
-                </Button>
+                <div className="flex items-center justify-center gap-6">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setIsCameraOpen(false)}
+                    className="h-12 w-12 rounded-full"
+                  >
+                    <XCircle className="h-5 w-5" />
+                  </Button>
+                  <button
+                    type="button"
+                    title="Capture photo"
+                    onClick={handleCapturePhoto}
+                    disabled={!stream}
+                    className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-pink-cyan glow-pink transition-transform active:scale-95 disabled:opacity-50"
+                  >
+                    <Camera className="h-8 w-8 text-midnight" />
+                    <span className="sr-only">Capture photo</span>
+                  </button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => { setIsCameraOpen(false); openFileUpload(); }}
+                    className="h-12 w-12 rounded-full"
+                    title="Upload instead"
+                  >
+                    <Video className="h-5 w-5" />
+                  </Button>
+                </div>
               </div>
             )}
 
@@ -539,19 +550,24 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
             )}
 
             {isTagging && (
-              <div className="flex items-center text-sm text-muted-foreground">
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                AI is analyzing your photo...
+              <div className="flex items-center gap-2 text-sm text-primary">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>AI is analyzing your photo…</span>
               </div>
             )}
             {aiTags.length > 0 && (
               <div>
-                <FormLabel>AI Generated Tags:</FormLabel>
-                <div className="mt-2 flex flex-wrap gap-2">
+                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  AI Detected
+                </p>
+                <div className="flex flex-wrap gap-1.5">
                   {aiTags.map((tag, index) => (
-                    <Badge key={index} variant="secondary">
+                    <span
+                      key={index}
+                      className="rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary"
+                    >
                       {tag}
-                    </Badge>
+                    </span>
                   ))}
                 </div>
               </div>
@@ -602,25 +618,21 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
           </CardHeader>
           <CardContent className="space-y-4">
             {isSuggestingRoom && (
-              <div className="flex items-center text-sm text-muted-foreground">
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                AI is suggesting a room...
+              <div className="flex items-center gap-2 text-sm text-accent">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>AI is suggesting a room…</span>
               </div>
             )}
             {aiSuggestedRoom && (
-              <div className="p-3 bg-accent/20 border border-accent rounded-md">
-                <div className="flex items-center">
-                  <Wand2 className="mr-2 h-5 w-5 text-accent-foreground" />
-                  <p className="text-sm font-medium text-accent-foreground">
-                    AI Suggestion:{" "}
-                    <span className="font-semibold">{aiSuggestedRoom}</span>
-                  </p>
-                </div>
-                <Button
+              <div className="flex items-center gap-2 rounded-xl border border-accent/20 bg-accent/10 px-3 py-2">
+                <Wand2 className="h-4 w-4 shrink-0 text-accent" />
+                <span className="text-sm">
+                  AI suggests:{" "}
+                  <span className="font-semibold text-accent">{aiSuggestedRoom}</span>
+                </span>
+                <button
                   type="button"
-                  variant="link"
-                  size="sm"
-                  className="p-0 h-auto mt-1 text-accent-foreground"
+                  className="ml-auto text-xs text-accent underline underline-offset-2"
                   onClick={() => {
                     form.setValue("assignedRoom", aiSuggestedRoom as Room, {
                       shouldValidate: true,
@@ -631,8 +643,8 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
                     });
                   }}
                 >
-                  Use this suggestion
-                </Button>
+                  Apply
+                </button>
               </div>
             )}
             <FormField
@@ -665,12 +677,14 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
           </CardContent>
         </Card>
 
-        <div className="flex justify-end gap-4">
-          <Button type="button" variant="outline" onClick={() => router.back()}>
+        <div className="flex gap-3 pt-2">
+          <Button type="button" variant="outline" onClick={() => router.back()} className="flex-1">
             Cancel
           </Button>
           <Button
             type="submit"
+            size="lg"
+            className="flex-1"
             disabled={
               form.formState.isSubmitting ||
               isTagging ||

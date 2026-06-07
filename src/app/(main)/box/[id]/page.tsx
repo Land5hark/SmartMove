@@ -1,6 +1,4 @@
 import { BoxDetailClient } from '@/components/BoxDetailClient';
-import { getBox } from '@/lib/store';
-import { notFound } from 'next/navigation';
 
 interface BoxDetailPageProps {
   params: Promise<{ id: string }>;
@@ -18,9 +16,5 @@ export default async function BoxDetailPage({ params }: BoxDetailPageProps) {
   //   notFound();
   // }
 
-  return (
-    <div className="container mx-auto max-w-3xl py-8 px-4">
-      <BoxDetailClient boxId={id} />
-    </div>
-  );
+  return <BoxDetailClient boxId={id} />;
 }

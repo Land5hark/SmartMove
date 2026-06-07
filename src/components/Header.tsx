@@ -1,6 +1,5 @@
 "use client";
 
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { siteConfig } from "@/config/site";
 import { useAuth } from "@/lib/auth";
@@ -37,7 +36,6 @@ export function Header() {
           </Button>
         </nav>
         <div className="flex items-center space-x-2">
-          <ThemeToggle />
           {user ? (
             <>
               <Button asChild>

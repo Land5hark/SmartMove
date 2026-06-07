@@ -1,0 +1,24 @@
+[  604955ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:9002/:0
+[  745253ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_RESET @ http://localhost:9002/_next/static/chunks/%5Bnext%5D_entry_page-loader_ts_0z3haqk._.js:0
+[  745261ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_RESET @ http://localhost:9002/_next/static/chunks/node_modules_next_app_0yrdk3r.js:0
+[  745261ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_RESET @ http://localhost:9002/_next/static/chunks/node_modules_next_dist_1gdrd03._.js:0
+[  745261ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_RESET @ http://localhost:9002/_next/static/chunks/node_modules_next_dist_client_16lnmlo._.js:0
+[  745261ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_RESET @ http://localhost:9002/_next/static/chunks/node_modules_next_dist_shared_lib_12jmhie._.js:0
+[  745262ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_RESET @ http://localhost:9002/_next/static/chunks/node_modules_react_1gmfq0p._.js:0
+[  747628ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:9002/_next/static/chunks/node_modules_react-dom_cjs_react-dom_development_0d3scg3.js:0
+[  747628ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:9002/_next/static/chunks/node_modules_react-dom_13voigl._.js:0
+[  747629ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:9002/_next/static/chunks/node_modules_0jsiwv3._.js:0
+[  747629ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:9002/_next/static/chunks/%5Broot-of-the-server%5D__0l4r13l._.js:0
+[  747629ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:9002/_next/static/chunks/pages__app_0du2_q-._.js:0
+[  747633ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:9002/_next/static/chunks/turbopack-pages__app_0fa0bga._.js:0
+[  749954ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:9002/_next/static/chunks/node_modules_next_dist_shared_lib_0pizcwv._.js:0
+[  749954ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:9002/_next/static/chunks/node_modules_next_dist_1atto1n._.js:0
+[  749954ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:9002/_next/static/chunks/%5Bnext%5D_entry_page-loader_ts_1aoli7m._.js:0
+[  749974ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:9002/_next/static/chunks/%5Broot-of-the-server%5D__02sxxph._.js:0
+[  749974ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:9002/_next/static/chunks/pages__error_0du2_q-._.js:0
+[  749974ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:9002/_next/static/chunks/turbopack-pages__error_0rryr4c._.js:0
+[  752307ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:9002/_next/static/development/_buildManifest.js:0
+[  752308ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:9002/_next/static/development/_ssgManifest.js:0
+[  752308ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:9002/_next/static/development/_clientMiddlewareManifest.js:0
+[  752322ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:9002/_next/static/chunks/node_modules_next_dist_compiled_14ibvna._.js:0
+[  754694ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:9002/favicon.ico:0

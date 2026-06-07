@@ -1,0 +1,25 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e26]:
+    - generic [ref=e27]:
+      - generic [ref=e28]:
+        - img [ref=e29]
+        - text: Sign In to SmartMove
+      - generic [ref=e32]: Enter your credentials to access your account.
+    - generic [ref=e34]:
+      - generic [ref=e35]:
+        - text: Email Address
+        - textbox "Email Address" [ref=e36]:
+          - /placeholder: you@example.com
+      - generic [ref=e37]:
+        - text: Password
+        - textbox "Password" [ref=e38]:
+          - /placeholder: ••••••••
+      - button "Sign In" [ref=e39] [cursor=pointer]
+    - paragraph [ref=e41]:
+      - text: New user?
+      - button "Create an account" [ref=e42] [cursor=pointer]
+  - region "Notifications (F8)":
+    - list
+  - button "Open Next.js Dev Tools" [ref=e20] [cursor=pointer]:
+    - img [ref=e21]
+  - alert [ref=e24]

@@ -1,4 +1,4 @@
-const DEFAULT_MODEL = "google/gemini-2.0-flash-001";
+const DEFAULT_MODEL = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free";
 
 type OpenRouterRequest = {
   prompt: string;
@@ -14,8 +14,9 @@ function getApiKey() {
 }
 
 function parseJsonResponse(text: string) {
-  const cleaned = text
-    .trim()
+  // Strip <think>...</think> blocks emitted by reasoning models
+  const withoutThink = text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+  const cleaned = withoutThink
     .replace(/^```json\s*/i, "")
     .replace(/^```\s*/i, "")
     .replace(/\s*```$/i, "");
@@ -47,7 +48,6 @@ export async function generateOpenRouterJson<T>({
     body: JSON.stringify({
       model: getModel(),
       messages: [{ role: "user", content }],
-      response_format: { type: "json_object" },
     }),
   });
 

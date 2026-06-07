@@ -10,6 +10,14 @@ export default {
   theme: {
   	extend: {
   		colors: {
+  			/* Brand palette — direct hex for explicit use */
+  			'neon-pink': '#FF4FD8',
+  			'electric-cyan': '#42D9FF',
+  			'deep-purple': '#1A1038',
+  			'midnight': '#090814',
+  			'sunset-orange': '#FF8A4C',
+  			'lavender': '#B58DFF',
+  			'soft-white': '#F5F5FA',
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
   			card: {
@@ -63,8 +71,17 @@ export default {
   		},
   		borderRadius: {
   			lg: 'var(--radius)',
-  			md: 'calc(var(--radius) - 2px)',
-  			sm: 'calc(var(--radius) - 4px)'
+  			md: 'calc(var(--radius) - 4px)',
+  			sm: 'calc(var(--radius) - 8px)',
+  			card: '1.5rem',
+  			xl: '2rem',
+  		},
+  		backgroundImage: {
+  			'gradient-primary': 'linear-gradient(135deg, #FF4FD8, #42D9FF)',
+  			'gradient-secondary': 'linear-gradient(135deg, #1A1038, #FF4FD8)',
+  			'gradient-hero': 'linear-gradient(135deg, #FF8A4C, #FF4FD8, #1A1038)',
+  			'gradient-pink-cyan': 'linear-gradient(to right, #FF4FD8, #42D9FF)',
+  			'gradient-card': 'linear-gradient(135deg, rgba(26,16,56,0.7), rgba(9,8,20,0.85))',
   		},
   		keyframes: {
   			'accordion-down': {
