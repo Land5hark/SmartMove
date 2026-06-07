@@ -1,56 +1,71 @@
+"use client";
 
-'use client';
-
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-import * as z from 'zod';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
+import { Button } from "@/components/ui/button";
 import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
-import { LogIn } from 'lucide-react';
-import { siteConfig } from '@/config/site';
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
+import {
+    Form,
+    FormControl,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { siteConfig } from "@/config/site";
+import { useAuth } from "@/lib/auth";
+import { useToast } from "@/hooks/use-toast";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { LogIn } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
 
-const loginFormSchema = z.object({
-  email: z.string().email({ message: 'Please enter a valid email address.' }),
-  password: z.string().min(1, { message: 'Password is required.' }), // Simple check for prototype
+const formSchema = z.object({
+  email: z.string().email({ message: "Please enter a valid email address." }),
+  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
 });
 
-type LoginFormValues = z.infer<typeof loginFormSchema>;
+type FormValues = z.infer<typeof formSchema>;
 
 export default function LoginPage() {
+  const { signIn, signUp } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
 
-  const form = useForm<LoginFormValues>({
-    resolver: zodResolver(loginFormSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-    },
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: { email: "", password: "" },
   });
 
-  const onSubmit = (data: LoginFormValues) => {
-    console.log('Login submitted:', data);
-    // Simulate API call
-    toast({
-      title: 'Login Successful!',
-      description: `Welcome back to ${siteConfig.name}. Redirecting...`,
-    });
-    // In a real app, you'd handle authentication here and then redirect.
-    // For the prototype, we'll just redirect to the homepage.
-    router.push('/');
+  const onSubmit = async (data: FormValues) => {
+    try {
+      if (mode === "signin") {
+        await signIn(data.email, data.password);
+      } else {
+        await signUp(data.email, data.password);
+        toast({
+          title: "Account created!",
+          description: "Check your email to confirm your address, then sign in.",
+        });
+        setMode("signin");
+        return;
+      }
+      router.push("/");
+    } catch (err: unknown) {
+      toast({
+        variant: "destructive",
+        title: mode === "signin" ? "Sign in failed" : "Sign up failed",
+        description: err instanceof Error ? err.message : "An error occurred.",
+      });
+    }
   };
 
   return (
@@ -59,9 +74,13 @@ export default function LoginPage() {
         <CardHeader className="text-center">
           <CardTitle className="text-3xl font-bold flex items-center justify-center">
             <LogIn className="mr-2 h-7 w-7 text-primary" />
-            Sign In to {siteConfig.name}
+            {mode === "signin" ? `Sign In to ${siteConfig.name}` : `Create Account`}
           </CardTitle>
-          <CardDescription>Enter your credentials to access your account.</CardDescription>
+          <CardDescription>
+            {mode === "signin"
+              ? "Enter your credentials to access your account."
+              : "Create a new account to get started."}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -92,24 +111,48 @@ export default function LoginPage() {
                   </FormItem>
                 )}
               />
-              <div className="flex items-center justify-between text-sm">
-                <Link href="#" className="font-medium text-primary hover:underline">
-                  Forgot password?
-                </Link>
-              </div>
-              <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? 'Signing In...' : 'Sign In'}
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={form.formState.isSubmitting}
+              >
+                {form.formState.isSubmitting
+                  ? mode === "signin"
+                    ? "Signing in..."
+                    : "Creating account..."
+                  : mode === "signin"
+                    ? "Sign In"
+                    : "Create Account"}
               </Button>
             </form>
           </Form>
         </CardContent>
-        <CardContent className="mt-0 border-t pt-6 text-center">
-            <p className="text-sm text-muted-foreground">
-              New user?{' '}
-              <Link href="#" className="font-medium text-primary hover:underline">
-                Register here
-              </Link>
-            </p>
+        <CardContent className="border-t pt-6 text-center">
+          <p className="text-sm text-muted-foreground">
+            {mode === "signin" ? (
+              <>
+                New user?{" "}
+                <button
+                  type="button"
+                  className="font-medium text-primary hover:underline"
+                  onClick={() => setMode("signup")}
+                >
+                  Create an account
+                </button>
+              </>
+            ) : (
+              <>
+                Already have an account?{" "}
+                <button
+                  type="button"
+                  className="font-medium text-primary hover:underline"
+                  onClick={() => setMode("signin")}
+                >
+                  Sign in
+                </button>
+              </>
+            )}
+          </p>
         </CardContent>
       </Card>
     </div>

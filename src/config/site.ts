@@ -1,4 +1,3 @@
-
 export type SiteConfig = {
   name: string;
   description: string;
@@ -12,7 +11,8 @@ export type SiteConfig = {
 
 export const siteConfig: SiteConfig = {
   name: "SmartMove",
-  description: "SmartMove is a comprehensive moving management application designed to simplify the moving process by providing tools for inventory management, packing organization, and move coordination.",
+  description:
+    "SmartMove is a comprehensive moving management application designed to simplify the moving process by providing tools for inventory management, packing organization, and move coordination.",
   url: "http://localhost:3000", // Replace with your actual domain
   ogImage: "http://localhost:3000/og.jpg", // Replace with your actual OG image URL
   links: {

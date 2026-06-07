@@ -1,35 +1,57 @@
+"use client";
 
-'use client';
-
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-import * as z from 'zod';
-import { Button } from '@/components/ui/button';
+import { generateItemTags } from "@/ai/flows/generate-item-tags";
+import { suggestRoomPlacement } from "@/ai/flows/suggest-room-placement";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
-import { useRouter } from 'next/navigation';
-import { useState, useRef, ChangeEvent, useEffect } from 'react';
-import Image from 'next/image';
-import { Loader2, Camera, CheckCircle, AlertTriangle, Wand2, Trash2, Video, XCircle, SwitchCamera } from 'lucide-react';
-import type { Box, Room } from '@/types';
-import { ROOM_OPTIONS } from '@/types';
-import { saveBox, generateUniqueId } from '@/lib/store';
-import { generateItemTags } from '@/ai/flows/generate-item-tags';
-import { suggestRoomPlacement } from '@/ai/flows/suggest-room-placement';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
+import {
+    Form,
+    FormControl,
+    FormDescription,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/auth";
+import { generateBoxId, saveBox } from "@/lib/supabase-boxes";
+import type { Box, Room } from "@/types";
+import { ROOM_OPTIONS } from "@/types";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+    AlertTriangle,
+    Camera,
+    CheckCircle,
+    Loader2,
+    SwitchCamera,
+    Trash2,
+    Video,
+    Wand2,
+    XCircle,
+} from "lucide-react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { ChangeEvent, useEffect, useRef, useState } from "react";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
 
 const addBoxFormSchema = z.object({
   id: z.string().optional(),
@@ -45,29 +67,39 @@ const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
   const { toast } = useToast();
   const router = useRouter();
-  const [photoPreview, setPhotoPreview] = useState<string | null>(existingBox?.photoDataUrl || null);
+  const { user } = useAuth();
+  const [photoPreview, setPhotoPreview] = useState<string | null>(
+    existingBox?.photoDataUrl || null,
+  );
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [isTagging, setIsTagging] = useState(false);
   const [isSuggestingRoom, setIsSuggestingRoom] = useState(false);
-  const [aiTags, setAiTags] = useState<string[]>(existingBox?.aiGeneratedTags || []);
-  const [aiSuggestedRoom, setAiSuggestedRoom] = useState<string | null>(existingBox?.suggestedRoom || null);
+  const [aiTags, setAiTags] = useState<string[]>(
+    existingBox?.aiGeneratedTags || [],
+  );
+  const [aiSuggestedRoom, setAiSuggestedRoom] = useState<string | null>(
+    existingBox?.suggestedRoom || null,
+  );
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const [hasCameraPermission, setHasCameraPermission] = useState<
+    boolean | null
+  >(null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
-  const [currentFacingMode, setCurrentFacingMode] = useState<'user' | 'environment'>('environment');
-
+  const [currentFacingMode, setCurrentFacingMode] = useState<
+    "user" | "environment"
+  >("environment");
 
   const form = useForm<AddBoxFormValues>({
     resolver: zodResolver(addBoxFormSchema),
     defaultValues: {
-      id: existingBox?.id || generateUniqueId().substring(0,8),
-      manualDescription: existingBox?.manualDescription || '',
-      assignedRoom: existingBox?.assignedRoom || '',
+      id: existingBox?.id || generateBoxId().substring(0, 8),
+      manualDescription: existingBox?.manualDescription || "",
+      assignedRoom: existingBox?.assignedRoom || "",
     },
   });
 
@@ -77,18 +109,20 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
     const getCameraStream = async () => {
       // Stop any existing stream before getting a new one
       if (stream) {
-          stream.getTracks().forEach(track => track.stop());
-          setStream(null);
+        stream.getTracks().forEach((track) => track.stop());
+        setStream(null);
       }
       if (videoRef.current && videoRef.current.srcObject) {
-          (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
-          videoRef.current.srcObject = null;
+        (videoRef.current.srcObject as MediaStream)
+          .getTracks()
+          .forEach((track) => track.stop());
+        videoRef.current.srcObject = null;
       }
 
       if (isCameraOpen) {
         try {
           const mediaStream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: currentFacingMode }
+            video: { facingMode: currentFacingMode },
           });
           localStream = mediaStream;
           setStream(mediaStream);
@@ -97,12 +131,13 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
             videoRef.current.srcObject = mediaStream;
           }
         } catch (error) {
-          console.error('Error accessing camera:', error);
+          console.error("Error accessing camera:", error);
           setHasCameraPermission(false);
           toast({
-            variant: 'destructive',
-            title: 'Camera Access Denied',
-            description: 'Could not access the specified camera. Please check permissions or try another camera type.',
+            variant: "destructive",
+            title: "Camera Access Denied",
+            description:
+              "Could not access the specified camera. Please check permissions or try another camera type.",
           });
           setIsCameraOpen(false);
         }
@@ -113,21 +148,25 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
 
     return () => {
       if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
+        localStream.getTracks().forEach((track) => track.stop());
       }
       if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+        stream.getTracks().forEach((track) => track.stop());
         setStream(null);
       }
       if (videoRef.current && videoRef.current.srcObject) {
-          (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
-          videoRef.current.srcObject = null;
+        (videoRef.current.srcObject as MediaStream)
+          .getTracks()
+          .forEach((track) => track.stop());
+        videoRef.current.srcObject = null;
       }
     };
   }, [isCameraOpen, currentFacingMode, toast]);
 
   const handleFlipCamera = () => {
-    setCurrentFacingMode(prevMode => prevMode === 'user' ? 'environment' : 'user');
+    setCurrentFacingMode((prevMode) =>
+      prevMode === "user" ? "environment" : "user",
+    );
   };
 
   const handlePhotoChange = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -142,7 +181,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
         setPhotoPreview(null);
         setPhotoFile(null);
         if (fileInputRef.current) {
-            fileInputRef.current.value = "";
+          fileInputRef.current.value = "";
         }
         return;
       }
@@ -163,23 +202,31 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
       const canvas = canvasRef.current;
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
-      const context = canvas.getContext('2d');
+      const context = canvas.getContext("2d");
       if (context) {
-        if (currentFacingMode === 'user') {
+        if (currentFacingMode === "user") {
           context.translate(canvas.width, 0);
           context.scale(-1, 1);
         }
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
         setPhotoPreview(dataUrl);
         setPhotoFile(null);
         triggerAiTagging(dataUrl);
         setIsCameraOpen(false);
       } else {
-        toast({ title: "Error capturing photo", description: "Could not get canvas context.", variant: "destructive" });
+        toast({
+          title: "Error capturing photo",
+          description: "Could not get canvas context.",
+          variant: "destructive",
+        });
       }
     } else {
-       toast({ title: "Error capturing photo", description: "Camera or canvas not ready.", variant: "destructive" });
+      toast({
+        title: "Error capturing photo",
+        description: "Camera or canvas not ready.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -190,16 +237,17 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
       const result = await generateItemTags({ photoDataUri: photoDataUrl });
       setAiTags(result.itemTags);
       toast({
-        title: 'AI Tagging Complete',
+        title: "AI Tagging Complete",
         description: `${result.itemTags.length} tags generated.`,
       });
-      triggerAiRoomSuggestion(result.itemTags.join(', '));
+      triggerAiRoomSuggestion(result.itemTags.join(", "));
     } catch (error) {
-      console.error('AI Tagging Error:', error);
+      console.error("AI Tagging Error:", error);
       toast({
-        title: 'AI Tagging Failed',
-        description: 'Could not generate tags for the image. Please try again or add manually.',
-        variant: 'destructive',
+        title: "AI Tagging Failed",
+        description:
+          "Could not generate tags for the image. Please try again or add manually.",
+        variant: "destructive",
       });
     } finally {
       setIsTagging(false);
@@ -207,14 +255,15 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
   };
 
   const triggerAiRoomSuggestion = async (itemDescription: string) => {
-    if (!itemDescription && !form.getValues('manualDescription')) {
+    if (!itemDescription && !form.getValues("manualDescription")) {
       setAiSuggestedRoom(null);
       return;
     }
 
     setIsSuggestingRoom(true);
     setAiSuggestedRoom(null);
-    const descriptionToUse = itemDescription || form.getValues('manualDescription') || "";
+    const descriptionToUse =
+      itemDescription || form.getValues("manualDescription") || "";
 
     if (!descriptionToUse.trim()) {
       setIsSuggestingRoom(false);
@@ -222,53 +271,73 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
     }
 
     try {
-      const result = await suggestRoomPlacement({ itemDescription: descriptionToUse });
+      const result = await suggestRoomPlacement({
+        itemDescription: descriptionToUse,
+      });
       setAiSuggestedRoom(result.suggestedRoom);
       toast({
-        title: 'AI Room Suggestion',
+        title: "AI Room Suggestion",
         description: `Suggested room: ${result.suggestedRoom}.`,
       });
     } catch (error) {
-      console.error('AI Room Suggestion Error:', error);
+      console.error("AI Room Suggestion Error:", error);
       toast({
-        title: 'AI Room Suggestion Failed',
-        description: 'Could not suggest a room. Please assign manually.',
-        variant: 'destructive',
+        title: "AI Room Suggestion Failed",
+        description: "Could not suggest a room. Please assign manually.",
+        variant: "destructive",
       });
     } finally {
       setIsSuggestingRoom(false);
     }
   };
 
-  const onSubmit = (data: AddBoxFormValues) => {
-    const boxToSave: Omit<Box, 'createdAt' | 'qrCodeValue'> & { id?: string } = {
-      id: data.id || existingBox?.id || generateUniqueId(),
-      manualDescription: data.manualDescription,
-      assignedRoom: data.assignedRoom,
-      photoDataUrl: photoPreview || undefined,
-      aiGeneratedTags: aiTags,
-      suggestedRoom: aiSuggestedRoom || undefined,
-      items: [],
-    };
-
-    const savedBox = saveBox(boxToSave);
-    toast({
-      title: existingBox ? 'Box Updated!' : 'Box Added!',
-      description: `Box #${savedBox.id.substring(0,6)} has been successfully ${existingBox ? 'updated' : 'saved'}.`,
-      action: (
-        <Button variant="outline" size="sm" onClick={() => router.push(`/box/${savedBox.id}`)}>
-          View Box
-        </Button>
-      ),
-    });
-    router.push('/');
+  const onSubmit = async (data: AddBoxFormValues) => {
+    if (!user) {
+      toast({ variant: "destructive", title: "Not signed in", description: "Please sign in to save boxes." });
+      return;
+    }
+    const boxId = data.id || existingBox?.id || generateBoxId();
+    try {
+      const savedBox = await saveBox(user.id, {
+        id: boxId,
+        manualDescription: data.manualDescription,
+        assignedRoom: data.assignedRoom,
+        photoDataUrl: photoPreview || undefined,
+        photoPath: existingBox?.photoPath,
+        photoUrl: existingBox?.photoUrl,
+        aiGeneratedTags: aiTags,
+        suggestedRoom: aiSuggestedRoom || undefined,
+        createdAt: existingBox?.createdAt,
+        items: existingBox?.items || [],
+      });
+      toast({
+        title: existingBox ? "Box Updated!" : "Box Added!",
+        description: `Box #${savedBox.id.substring(0, 6)} has been successfully ${existingBox ? "updated" : "saved"}.`,
+        action: (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => router.push(`/box/${savedBox.id}`)}
+          >
+            View Box
+          </Button>
+        ),
+      });
+      router.push("/");
+    } catch (err: unknown) {
+      toast({
+        variant: "destructive",
+        title: "Failed to save box",
+        description: err instanceof Error ? err.message : "An error occurred.",
+      });
+    }
   };
 
   const openCamera = () => {
     setPhotoPreview(null);
     setPhotoFile(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
-    setCurrentFacingMode('environment');
+    setCurrentFacingMode("environment");
     setIsCameraOpen(true);
   };
 
@@ -283,8 +352,8 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
     setAiTags([]);
     setAiSuggestedRoom(null);
     setIsCameraOpen(false);
-    if(fileInputRef.current) fileInputRef.current.value = "";
-  }
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
 
   return (
     <Form {...form}>
@@ -292,7 +361,9 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle>Box Identifier</CardTitle>
-            <CardDescription>Unique ID for your box. This will be part of the QR code.</CardDescription>
+            <CardDescription>
+              Unique ID for your box. This will be part of the QR code.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <FormField
@@ -302,10 +373,16 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
                 <FormItem>
                   <FormLabel>Box ID</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., KITCH001 or unique hash" {...field} readOnly={!!existingBox || form.formState.isSubmitting} />
+                    <Input
+                      placeholder="e.g., KITCH001 or unique hash"
+                      {...field}
+                      readOnly={!!existingBox || form.formState.isSubmitting}
+                    />
                   </FormControl>
                   <FormDescription>
-                    {existingBox ? "This ID cannot be changed." : "A unique ID for this box. Keep it short if handwriting."}
+                    {existingBox
+                      ? "This ID cannot be changed."
+                      : "A unique ID for this box. Keep it short if handwriting."}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -317,7 +394,10 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle>Box Contents Photo</CardTitle>
-            <CardDescription>Add a photo of the items inside the box using your camera or by uploading an image.</CardDescription>
+            <CardDescription>
+              Add a photo of the items inside the box using your camera or by
+              uploading an image.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <Input
@@ -332,7 +412,11 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
 
             {!photoPreview && !isCameraOpen && (
               <div className="flex gap-2 flex-wrap">
-                <Button type="button" variant="outline" onClick={openFileUpload}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={openFileUpload}
+                >
                   <Camera className="mr-2 h-4 w-4" /> Upload Photo
                 </Button>
                 <Button type="button" variant="outline" onClick={openCamera}>
@@ -344,7 +428,13 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
             {isCameraOpen && (
               <div className="space-y-4">
                 <div className="relative">
-                  <video ref={videoRef} className="w-full aspect-video rounded-md border bg-muted" autoPlay muted playsInline />
+                  <video
+                    ref={videoRef}
+                    className="w-full aspect-video rounded-md border bg-muted"
+                    autoPlay
+                    muted
+                    playsInline
+                  />
                   <Button
                     type="button"
                     variant="outline"
@@ -361,21 +451,40 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
                     <AlertTriangle className="h-4 w-4" />
                     <AlertTitle>Camera Access Denied</AlertTitle>
                     <AlertDescription>
-                      Please allow camera access in your browser settings to use this feature. You might need to refresh the page after granting permission.
+                      Please allow camera access in your browser settings to use
+                      this feature. You might need to refresh the page after
+                      granting permission.
                     </AlertDescription>
                   </Alert>
                 )}
-                 {hasCameraPermission === true && (
+                {hasCameraPermission === true && (
                   <div className="flex gap-2 flex-wrap">
-                    <Button type="button" onClick={handleCapturePhoto} disabled={!stream}>
+                    <Button
+                      type="button"
+                      onClick={handleCapturePhoto}
+                      disabled={!stream}
+                    >
                       <Camera className="mr-2 h-4 w-4" /> Capture Photo
                     </Button>
-                     <Button type="button" variant="outline" onClick={() => setIsCameraOpen(false)}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsCameraOpen(false)}
+                    >
                       <XCircle className="mr-2 h-4 w-4" /> Cancel Camera
                     </Button>
                   </div>
                 )}
-                <Button type="button" variant="link" size="sm" className="p-0 h-auto" onClick={() => { setIsCameraOpen(false); openFileUpload(); }}>
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  className="p-0 h-auto"
+                  onClick={() => {
+                    setIsCameraOpen(false);
+                    openFileUpload();
+                  }}
+                >
                   Or Upload Photo Instead
                 </Button>
               </div>
@@ -403,7 +512,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
                     <Camera className="h-4 w-4" />
                     <span className="sr-only">Change Photo (Upload)</span>
                   </Button>
-                   <Button
+                  <Button
                     type="button"
                     variant="secondary"
                     size="icon"
@@ -423,7 +532,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
                     title="Remove Photo"
                   >
                     <Trash2 className="h-4 w-4" />
-                     <span className="sr-only">Remove Photo</span>
+                    <span className="sr-only">Remove Photo</span>
                   </Button>
                 </div>
               </div>
@@ -440,7 +549,9 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
                 <FormLabel>AI Generated Tags:</FormLabel>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {aiTags.map((tag, index) => (
-                    <Badge key={index} variant="secondary">{tag}</Badge>
+                    <Badge key={index} variant="secondary">
+                      {tag}
+                    </Badge>
                   ))}
                 </div>
               </div>
@@ -451,7 +562,10 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle>Item Details</CardTitle>
-            <CardDescription>Add manual notes about the contents, especially for fragile or important items.</CardDescription>
+            <CardDescription>
+              Add manual notes about the contents, especially for fragile or
+              important items.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <FormField
@@ -467,7 +581,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
                       {...field}
                       onBlur={() => {
                         if (!aiTags.length && !photoPreview) {
-                           triggerAiRoomSuggestion(field.value || "");
+                          triggerAiRoomSuggestion(field.value || "");
                         }
                       }}
                     />
@@ -482,7 +596,9 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle>Room Assignment</CardTitle>
-            <CardDescription>Assign this box to a room in your new place.</CardDescription>
+            <CardDescription>
+              Assign this box to a room in your new place.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {isSuggestingRoom && (
@@ -495,7 +611,10 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
               <div className="p-3 bg-accent/20 border border-accent rounded-md">
                 <div className="flex items-center">
                   <Wand2 className="mr-2 h-5 w-5 text-accent-foreground" />
-                  <p className="text-sm font-medium text-accent-foreground">AI Suggestion: <span className="font-semibold">{aiSuggestedRoom}</span></p>
+                  <p className="text-sm font-medium text-accent-foreground">
+                    AI Suggestion:{" "}
+                    <span className="font-semibold">{aiSuggestedRoom}</span>
+                  </p>
                 </div>
                 <Button
                   type="button"
@@ -503,8 +622,13 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
                   size="sm"
                   className="p-0 h-auto mt-1 text-accent-foreground"
                   onClick={() => {
-                    form.setValue('assignedRoom', aiSuggestedRoom as Room, { shouldValidate: true });
-                    toast({ title: "Room Applied", description: `${aiSuggestedRoom} has been set as the assigned room.`});
+                    form.setValue("assignedRoom", aiSuggestedRoom as Room, {
+                      shouldValidate: true,
+                    });
+                    toast({
+                      title: "Room Applied",
+                      description: `${aiSuggestedRoom} has been set as the assigned room.`,
+                    });
                   }}
                 >
                   Use this suggestion
@@ -517,7 +641,10 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Assigned Room</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select a room" />
@@ -542,18 +669,25 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
           <Button type="button" variant="outline" onClick={() => router.back()}>
             Cancel
           </Button>
-          <Button type="submit" disabled={form.formState.isSubmitting || isTagging || isSuggestingRoom || (isCameraOpen && hasCameraPermission === null) || (isCameraOpen && !hasCameraPermission && !stream) }>
+          <Button
+            type="submit"
+            disabled={
+              form.formState.isSubmitting ||
+              isTagging ||
+              isSuggestingRoom ||
+              (isCameraOpen && hasCameraPermission === null) ||
+              (isCameraOpen && !hasCameraPermission && !stream)
+            }
+          >
             {form.formState.isSubmitting ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              existingBox ? <CheckCircle className="mr-2 h-4 w-4" /> : null
-            )}
-            {existingBox ? 'Update Box' : 'Save Box'}
+            ) : existingBox ? (
+              <CheckCircle className="mr-2 h-4 w-4" />
+            ) : null}
+            {existingBox ? "Update Box" : "Save Box"}
           </Button>
         </div>
       </form>
     </Form>
   );
 }
-
-    

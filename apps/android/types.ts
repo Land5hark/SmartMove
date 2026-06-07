@@ -1,23 +1,22 @@
-export interface BoxItem {
+export type BoxItem = {
   id: string;
   name: string;
   category?: string;
-}
+};
 
-export interface Box {
+export type Box = {
   id: string;
+  userId: string;
   qrCodeValue: string;
-  userId?: string;
-  photoDataUrl?: string; // ephemeral base64 — not persisted to DB
-  photoUrl?: string; // Supabase Storage URL
-  photoPath?: string; // Supabase Storage path (for deletion)
+  photoUrl?: string;
+  photoPath?: string;
   items: BoxItem[];
   manualDescription?: string;
   aiGeneratedTags?: string[];
   suggestedRoom?: string;
   assignedRoom?: string;
   createdAt: string;
-}
+};
 
 export const ROOM_OPTIONS = [
   "Kitchen",
@@ -37,5 +36,3 @@ export const ROOM_OPTIONS = [
   "Playroom",
   "Guest Room",
 ] as const;
-
-export type Room = (typeof ROOM_OPTIONS)[number];

@@ -1,20 +1,28 @@
+"use client";
 
-'use client';
-
-import type { NextPage } from 'next';
-import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Image from 'next/image'; 
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { PlusCircle, Search, Package, MapPin, QrCode } from 'lucide-react';
-import type { Box } from '@/types';
-import { getBoxes } from '@/lib/store';
+import { Button } from "@/components/ui/button";
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardFooter,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useAuth } from "@/lib/auth";
+import { listBoxes } from "@/lib/supabase-boxes";
+import type { Box } from "@/types";
+import { MapPin, Package, PlusCircle, QrCode, Search } from "lucide-react";
+import type { NextPage } from "next";
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 const BoxCard: React.FC<{ box: Box }> = ({ box }) => {
+  const photoSrc = box.photoUrl || box.photoDataUrl;
   return (
     <Card className="flex flex-col shadow-lg">
       <CardHeader>
@@ -33,14 +41,13 @@ const BoxCard: React.FC<{ box: Box }> = ({ box }) => {
         </CardDescription>
       </CardHeader>
       <CardContent className="flex-grow">
-        {box.photoDataUrl ? (
+        {photoSrc ? (
           <div className="mb-2 aspect-video w-full rounded-md bg-muted relative overflow-hidden">
             <Image
-              src={box.photoDataUrl}
+              src={photoSrc}
               alt={`Contents of box ${box.id.substring(0, 6)}`}
-              layout="fill"
-              objectFit="cover"
-              className="rounded-md"
+              fill
+              className="rounded-md object-cover"
               data-ai-hint="moving box items"
             />
           </div>
@@ -68,15 +75,19 @@ const BoxCard: React.FC<{ box: Box }> = ({ box }) => {
   );
 };
 
-
 const Home: NextPage = () => {
+  const { user, loading } = useAuth();
   const [boxes, setBoxes] = useState<Box[]>([]);
-  const [scanInput, setScanInput] = useState('');
+  const [scanInput, setScanInput] = useState("");
   const router = useRouter();
 
   useEffect(() => {
-    setBoxes(getBoxes());
-  }, []);
+    if (user) {
+      listBoxes(user.id).then(setBoxes).catch(console.error);
+    } else {
+      setBoxes([]);
+    }
+  }, [user]);
 
   const handleScanSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,13 +96,41 @@ const Home: NextPage = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="container mx-auto max-w-4xl py-8 px-4 flex items-center justify-center min-h-[50vh]">
+        <Package className="h-8 w-8 animate-pulse text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="container mx-auto max-w-4xl py-8 px-4">
+        <Card className="text-center py-12 shadow-lg">
+          <CardContent>
+            <Package className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
+            <p className="text-xl font-medium text-muted-foreground mb-2">
+              Sign in to manage your boxes
+            </p>
+            <Button asChild size="lg" className="mt-4">
+              <Link href="/login">Sign In</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto max-w-4xl py-8 px-4">
       <section className="mb-12">
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="text-2xl">Scan Box QR Code</CardTitle>
-            <CardDescription>Enter the Box ID from the QR code to quickly find its details.</CardDescription>
+            <CardDescription>
+              Enter the Box ID from the QR code to quickly find its details.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleScanSubmit} className="flex items-end gap-4">
