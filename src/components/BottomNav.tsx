@@ -10,7 +10,7 @@ const navItems = [
   { href: "/", icon: Home, label: "Home" },
   { href: "/boxes", icon: Package, label: "Boxes" },
   { href: "/add-box", icon: null, label: "Scan", isScan: true },
-  { href: "/documentation", icon: BookOpen, label: "Timeline" },
+  { href: "/inventory", icon: BookOpen, label: "Inventory" },
 ];
 
 export function BottomNav() {

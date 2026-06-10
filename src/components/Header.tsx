@@ -29,7 +29,7 @@ export function Header() {
             asChild
             className="text-muted-foreground hover:text-primary"
           >
-            <Link href="/documentation">
+            <Link href="/inventory">
               <FileText className="mr-1 h-4 w-4" />
               Docs
             </Link>
