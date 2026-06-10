@@ -130,9 +130,15 @@ const Home: NextPage = () => {
       {/* Page header */}
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Image src="/logo-icon.png" alt="SmartMove" width={36} height={36} className="rounded-lg" />
           <div>
-            <h1 className="text-lg font-bold gradient-text-primary leading-none">SmartMove</h1>
+            <Image
+              src="/logo-wordmark.png"
+              alt="SmartMove"
+              width={480}
+              height={480}
+              className="h-24 w-auto object-contain mb-0.5"
+              priority
+            />
             <p className="text-xs text-muted-foreground">
               {boxes.length} {boxes.length === 1 ? "box" : "boxes"} packed
             </p>

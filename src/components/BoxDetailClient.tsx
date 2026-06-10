@@ -165,13 +165,53 @@ export function BoxDetailClient({ boxId }: BoxDetailClientProps) {
           </CardContent>
         </Card>
 
-        {/* AI tags */}
+        {/* Items */}
         <Card>
           <CardContent className="p-4">
             <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              AI Detected Items
+              Items
             </p>
-            {box.aiGeneratedTags && box.aiGeneratedTags.length > 0 ? (
+            {box.items && box.items.length > 0 ? (
+              <div className="space-y-2">
+                {box.items.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between rounded-lg border border-border/50 px-3 py-2"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-sm font-medium truncate">
+                        {item.name}
+                      </span>
+                      {item.count && item.count > 1 && (
+                        <span className="shrink-0 text-xs text-muted-foreground">
+                          ×{item.count}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {item.confidence && (
+                        <span
+                          className={`text-[10px] rounded-full border px-1.5 py-0.5 ${
+                            item.confidence === "high"
+                              ? "border-green-300 bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                              : item.confidence === "medium"
+                                ? "border-yellow-300 bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300"
+                                : "border-red-300 bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300"
+                          }`}
+                        >
+                          {item.confidence}
+                        </span>
+                      )}
+                      {item.attributes && item.attributes.length > 0 && (
+                        <span className="text-[10px] text-muted-foreground hidden sm:inline">
+                          {item.attributes.slice(0, 2).join(", ")}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : box.aiGeneratedTags && box.aiGeneratedTags.length > 0 ? (
               <div className="flex flex-wrap gap-1.5">
                 {box.aiGeneratedTags.map((tag, index) => (
                   <span
@@ -183,7 +223,7 @@ export function BoxDetailClient({ boxId }: BoxDetailClientProps) {
                 ))}
               </div>
             ) : (
-              <p className="text-sm italic text-muted-foreground">No AI tags yet.</p>
+              <p className="text-sm italic text-muted-foreground">No items yet.</p>
             )}
           </CardContent>
         </Card>

@@ -1,6 +1,6 @@
 "use client";
 
-import { supabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
@@ -19,12 +19,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
+    getSupabase().auth.getSession().then(({ data }) => {
       setUser(data.session?.user ?? null);
       setLoading(false);
     });
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = getSupabase().auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
     });
 
@@ -36,15 +36,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       loading,
       signIn: async (email, password) => {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await getSupabase().auth.signInWithPassword({ email, password });
         if (error) throw error;
       },
       signUp: async (email, password) => {
-        const { error } = await supabase.auth.signUp({ email, password });
+        const { error } = await getSupabase().auth.signUp({ email, password });
         if (error) throw error;
       },
       signOut: async () => {
-        await supabase.auth.signOut();
+        await getSupabase().auth.signOut();
       },
     }),
     [user, loading],

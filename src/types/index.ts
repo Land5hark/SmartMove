@@ -1,7 +1,39 @@
+export type ScanMode = "fast" | "balanced" | "high_accuracy";
+
 export interface BoxItem {
   id: string;
   name: string;
+  normalizedLabel?: string;
+  count?: number;
+  confidence?: "high" | "medium" | "low";
   category?: string;
+  bboxHint?: string;
+  attributes?: string[];
+  notes?: string;
+}
+
+export interface ScanItem {
+  label: string;
+  normalized_label: string;
+  count: number;
+  confidence: "high" | "medium" | "low";
+  bbox_hint: string;
+  attributes: string[];
+  notes: string;
+}
+
+export interface ScanResult {
+  boxId?: string;
+  scanStatus: "completed" | "failed" | "partial";
+  modelUsed: string;
+  needsReview: boolean;
+  rawConfidenceSummary: {
+    high: number;
+    medium: number;
+    low: number;
+  };
+  warnings: string[];
+  items: ScanItem[];
 }
 
 export interface Box {

@@ -3,9 +3,10 @@ const DEFAULT_MODEL = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free";
 type OpenRouterRequest = {
   prompt: string;
   photoDataUri?: string;
+  model?: string;
 };
 
-function getModel() {
+function getDefaultModel() {
   return process.env.OPENROUTER_MODEL || DEFAULT_MODEL;
 }
 
@@ -26,6 +27,7 @@ function parseJsonResponse(text: string) {
 export async function generateOpenRouterJson<T>({
   prompt,
   photoDataUri,
+  model,
 }: OpenRouterRequest): Promise<T> {
   const apiKey = getApiKey();
   if (!apiKey) {
@@ -46,7 +48,7 @@ export async function generateOpenRouterJson<T>({
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: getModel(),
+      model: model || getDefaultModel(),
       messages: [{ role: "user", content }],
     }),
   });

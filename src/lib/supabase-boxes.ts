@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 import type { Box, BoxItem } from "@/types";
 
 const BUCKET = "box-photos";
@@ -43,22 +43,22 @@ async function uploadPhoto(
   const path = `${userId}/${boxId}/photo.${ext}`;
 
   const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-  const { error } = await supabase.storage
+  const { error } = await getSupabase().storage
     .from(BUCKET)
     .upload(path, bytes, { contentType: mime, upsert: true });
 
   if (error) throw new Error(`Photo upload failed: ${error.message}`);
 
-  const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  const { data: urlData } = getSupabase().storage.from(BUCKET).getPublicUrl(path);
   return { photoPath: path, photoUrl: urlData.publicUrl };
 }
 
 async function deletePhoto(photoPath: string): Promise<void> {
-  await supabase.storage.from(BUCKET).remove([photoPath]);
+  await getSupabase().storage.from(BUCKET).remove([photoPath]);
 }
 
 export async function listBoxes(userId: string): Promise<Box[]> {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from("boxes")
     .select("*")
     .eq("user_id", userId)
@@ -72,7 +72,7 @@ export async function getBox(
   userId: string,
   boxId: string,
 ): Promise<Box | null> {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from("boxes")
     .select("*")
     .eq("id", boxId)
@@ -111,7 +111,7 @@ export async function saveBox(
     created_at: input.createdAt ?? new Date().toISOString(),
   };
 
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from("boxes")
     .upsert(row, { onConflict: "id" })
     .select()
@@ -124,7 +124,7 @@ export async function saveBox(
 export async function deleteBox(userId: string, boxId: string): Promise<void> {
   const box = await getBox(userId, boxId);
 
-  const { error } = await supabase
+  const { error } = await getSupabase()
     .from("boxes")
     .delete()
     .eq("id", boxId)

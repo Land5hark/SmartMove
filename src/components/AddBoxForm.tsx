@@ -1,6 +1,6 @@
 "use client";
 
-import { generateItemTags } from "@/ai/flows/generate-item-tags";
+import { identifyBoxItems } from "@/ai/flows/identify-box-items";
 import { suggestRoomPlacement } from "@/ai/flows/suggest-room-placement";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -29,10 +29,11 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { ScanReviewClient } from "@/components/ScanReviewClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { generateBoxId, saveBox } from "@/lib/supabase-boxes";
-import type { Box, Room } from "@/types";
+import type { Box, Room, ScanMode, ScanResult } from "@/types";
 import { ROOM_OPTIONS } from "@/types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -71,7 +72,10 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
     existingBox?.photoDataUrl || null,
   );
   const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [isTagging, setIsTagging] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+  const [showReview, setShowReview] = useState(false);
+  const [scanResult, setScanResult] = useState<ScanResult | null>(null);
+  const [reviewedItems, setReviewedItems] = useState(existingBox?.items || []);
   const [isSuggestingRoom, setIsSuggestingRoom] = useState(false);
   const [aiTags, setAiTags] = useState<string[]>(
     existingBox?.aiGeneratedTags || [],
@@ -189,7 +193,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
       const reader = new FileReader();
       reader.onloadend = () => {
         setPhotoPreview(reader.result as string);
-        triggerAiTagging(reader.result as string);
+        triggerItemScan(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
@@ -211,7 +215,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
         const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
         setPhotoPreview(dataUrl);
         setPhotoFile(null);
-        triggerAiTagging(dataUrl);
+        triggerItemScan(dataUrl);
         setIsCameraOpen(false);
       } else {
         toast({
@@ -229,28 +233,86 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
     }
   };
 
-  const triggerAiTagging = async (photoDataUrl: string) => {
-    setIsTagging(true);
-    setAiTags([]);
+  const triggerItemScan = async (photoDataUrl: string) => {
+    setIsScanning(true);
+    setShowReview(false);
+    setScanResult(null);
     try {
-      const result = await generateItemTags({ photoDataUri: photoDataUrl });
-      setAiTags(result.itemTags);
-      toast({
-        title: "AI Tagging Complete",
-        description: `${result.itemTags.length} tags generated.`,
+      const result = await identifyBoxItems({
+        photoDataUri: photoDataUrl,
+        scanMode: "balanced",
       });
-      triggerAiRoomSuggestion(result.itemTags.join(", "));
-    } catch (error) {
-      console.error("AI Tagging Error:", error);
+      setScanResult(result);
+      setShowReview(true);
       toast({
-        title: "AI Tagging Failed",
+        title: "AI Scan Complete",
+        description: `${result.items.length} items detected.`,
+      });
+      if (result.items.length > 0) {
+        const tags = result.items.map((i) => i.label);
+        setAiTags(tags);
+        triggerAiRoomSuggestion(tags.join(", "));
+      }
+    } catch (error) {
+      console.error("AI Scan Error:", error);
+      toast({
+        title: "AI Scan Failed",
         description:
-          "Could not generate tags for the image. Please try again or add manually.",
+          "Could not identify items in the image. You can add them manually.",
         variant: "destructive",
       });
     } finally {
-      setIsTagging(false);
+      setIsScanning(false);
     }
+  };
+
+  const handleRescan = async (mode: ScanMode) => {
+    if (!photoPreview) return;
+    setIsScanning(true);
+    try {
+      const result = await identifyBoxItems({
+        photoDataUri: photoPreview,
+        scanMode: mode,
+      });
+      setScanResult(result);
+      setShowReview(true);
+      toast({
+        title: "Rescan Complete",
+        description: `${result.items.length} items detected.`,
+      });
+    } catch (error) {
+      console.error("Rescan Error:", error);
+      toast({
+        title: "Rescan Failed",
+        description: "Please try again or add items manually.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  const handleReviewSave = (items: import("@/types").BoxItem[]) => {
+    setReviewedItems(items);
+    setShowReview(false);
+    const tags = items.map((i) => i.name);
+    setAiTags(tags);
+    toast({
+      title: "Items saved",
+      description: `${items.length} items confirmed.`,
+    });
+  };
+
+  const handleRetakePhoto = () => {
+    setShowReview(false);
+    setScanResult(null);
+    setReviewedItems([]);
+    removePhoto();
+  };
+
+  const handleCancelReview = () => {
+    setShowReview(false);
+    setScanResult(null);
   };
 
   const triggerAiRoomSuggestion = async (itemDescription: string) => {
@@ -307,7 +369,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
         aiGeneratedTags: aiTags,
         suggestedRoom: aiSuggestedRoom || undefined,
         createdAt: existingBox?.createdAt,
-        items: existingBox?.items || [],
+        items: reviewedItems,
       });
       toast({
         title: existingBox ? "Box Updated!" : "Box Added!",
@@ -348,6 +410,9 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
   const removePhoto = () => {
     setPhotoPreview(null);
     setPhotoFile(null);
+    setShowReview(false);
+    setScanResult(null);
+    setReviewedItems([]);
     setAiTags([]);
     setAiSuggestedRoom(null);
     setIsCameraOpen(false);
@@ -549,13 +614,27 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
               </div>
             )}
 
-            {isTagging && (
+            {isScanning && (
               <div className="flex items-center gap-2 text-sm text-primary">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span>AI is analyzing your photo…</span>
+                <span>AI is scanning your photo…</span>
               </div>
             )}
-            {aiTags.length > 0 && (
+
+            {showReview && scanResult && photoPreview && (
+              <div className="mt-4">
+                <ScanReviewClient
+                  photoPreview={photoPreview}
+                  scanResult={scanResult}
+                  onSave={handleReviewSave}
+                  onRescan={handleRescan}
+                  onRetakePhoto={handleRetakePhoto}
+                  onCancel={handleCancelReview}
+                />
+              </div>
+            )}
+
+            {!showReview && aiTags.length > 0 && !isScanning && (
               <div>
                 <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   AI Detected
@@ -687,7 +766,8 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
             className="flex-1"
             disabled={
               form.formState.isSubmitting ||
-              isTagging ||
+              isScanning ||
+              showReview ||
               isSuggestingRoom ||
               (isCameraOpen && hasCameraPermission === null) ||
               (isCameraOpen && !hasCameraPermission && !stream)
