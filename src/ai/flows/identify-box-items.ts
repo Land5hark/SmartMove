@@ -1,7 +1,7 @@
 "use server";
 
 import { generateNimJson } from "@/ai/nvidia-nim";
-import { DEFAULT_MODEL_ID, MODEL_COOKIE } from "@/ai/models";
+import { AI_MODELS, DEFAULT_MODEL_ID, MODEL_COOKIE } from "@/ai/models";
 import { cookies } from "next/headers";
 import type { ScanItem, ScanMode, ScanResult } from "@/types";
 
@@ -88,7 +88,9 @@ type IdentifyBoxItemsInput = {
 
 async function getActiveModel(): Promise<string> {
   const jar = await cookies();
-  return jar.get(MODEL_COOKIE)?.value || DEFAULT_MODEL_ID;
+  const stored = jar.get(MODEL_COOKIE)?.value;
+  const isValid = AI_MODELS.some((m) => m.id === stored);
+  return isValid ? stored! : DEFAULT_MODEL_ID;
 }
 
 const SCAN_PROMPT = `Identify every distinct visible item in this photo of a packing box.
@@ -113,10 +115,22 @@ Return this JSON structure:
   "needs_review": true
 }`;
 
-const VERIFICATION_PROMPT = `Review the following list of items identified in a packing box photo.
-Check for duplicates, missing items, or generic descriptions.
-Return the corrected item list with the same JSON structure.
-Items must be individually enumerated with label, normalized_label, count, confidence, bbox_hint, attributes, notes.`;
+function buildVerificationPrompt(items: ScanItem[]): string {
+  return `Review the following list of items identified from a packing box photo and correct any errors.
+Check for: duplicates, overly generic labels, missed visible items, wrong counts.
+Return the corrected item list using the same JSON structure as the input.
+Items must be individually enumerated with label, normalized_label, count, confidence, bbox_hint, attributes, notes.
+
+First-pass item list:
+${JSON.stringify(items, null, 2)}
+
+Return JSON only:
+{
+  "items": [...],
+  "warnings": ["string"],
+  "needs_review": true
+}`;
+}
 
 function normalizeLabel(label: string): string {
   const lower = label.toLowerCase().trim();
@@ -223,7 +237,7 @@ export async function identifyBoxItems(
   let result = await tryModel(SCAN_PROMPT);
 
   if (!result || shouldEscalate(result.items, result.warnings, scanMode)) {
-    const fallback = await tryModel(VERIFICATION_PROMPT);
+    const fallback = await tryModel(buildVerificationPrompt(result?.items ?? []));
     if (fallback && fallback.items.length > 0) {
       result = fallback;
     }

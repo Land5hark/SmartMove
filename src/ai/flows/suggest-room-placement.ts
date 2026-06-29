@@ -1,7 +1,7 @@
 "use server";
 
 import { generateNimJson } from "@/ai/nvidia-nim";
-import { DEFAULT_MODEL_ID, MODEL_COOKIE } from "@/ai/models";
+import { AI_MODELS, DEFAULT_MODEL_ID, MODEL_COOKIE } from "@/ai/models";
 import { cookies } from "next/headers";
 
 export type SuggestRoomPlacementInput = {
@@ -25,7 +25,8 @@ export async function suggestRoomPlacement(
   input: SuggestRoomPlacementInput,
 ): Promise<SuggestRoomPlacementOutput> {
   const jar = await cookies();
-  const model = jar.get(MODEL_COOKIE)?.value || DEFAULT_MODEL_ID;
+  const stored = jar.get(MODEL_COOKIE)?.value;
+  const model = AI_MODELS.some((m) => m.id === stored) ? stored! : DEFAULT_MODEL_ID;
 
   const result = await generateNimJson<{ suggestedRoom: string }>({
     prompt: PROMPT(input.itemDescription),
