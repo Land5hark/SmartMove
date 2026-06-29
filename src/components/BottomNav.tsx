@@ -1,27 +1,20 @@
 "use client";
 
-import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
-import { BookOpen, Home, Package, ScanLine, User } from "lucide-react";
+import { BookOpen, Home, Package, ScanLine, Settings } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 const navItems = [
   { href: "/", icon: Home, label: "Home" },
   { href: "/boxes", icon: Package, label: "Boxes" },
   { href: "/add-box", icon: null, label: "Scan", isScan: true },
   { href: "/inventory", icon: BookOpen, label: "Inventory" },
+  { href: "/settings", icon: Settings, label: "Settings" },
 ];
 
 export function BottomNav() {
   const pathname = usePathname();
-  const router = useRouter();
-  const { user, signOut } = useAuth();
-
-  const handleSignOut = async () => {
-    await signOut();
-    router.push("/login");
-  };
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/5 bg-background/80 backdrop-blur-xl">
@@ -73,25 +66,6 @@ export function BottomNav() {
             </Link>
           );
         })}
-
-        {/* Profile / Sign Out */}
-        <button
-          type="button"
-          onClick={user ? handleSignOut : () => router.push("/login")}
-          className="flex flex-col items-center gap-1 py-1"
-        >
-          <User
-            className={cn(
-              "h-5 w-5 transition-colors",
-              pathname === "/profile"
-                ? "text-primary"
-                : "text-muted-foreground"
-            )}
-          />
-          <span className="text-[10px] font-medium text-muted-foreground">
-            {user ? "Sign Out" : "Sign In"}
-          </span>
-        </button>
       </div>
     </nav>
   );

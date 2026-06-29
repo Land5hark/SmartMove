@@ -1,6 +1,8 @@
 "use server";
 
-import { generateOpenRouterJson } from "@/ai/openrouter";
+import { generateNimJson } from "@/ai/nvidia-nim";
+import { DEFAULT_MODEL_ID, MODEL_COOKIE } from "@/ai/models";
+import { cookies } from "next/headers";
 import type { ScanItem, ScanMode, ScanResult } from "@/types";
 
 type IdentifyBoxItemsInput = {
@@ -9,15 +11,9 @@ type IdentifyBoxItemsInput = {
   scanMode?: ScanMode;
 };
 
-function getPrimaryModel(): string {
-  return (
-    process.env.OPENROUTER_PRIMARY_MODEL ||
-    "google/gemini-3.1-pro-preview"
-  );
-}
-
-function getFallbackModel(): string {
-  return process.env.OPENROUTER_FALLBACK_MODEL || "openai/gpt-5.5";
+async function getActiveModel(): Promise<string> {
+  const jar = await cookies();
+  return jar.get(MODEL_COOKIE)?.value || DEFAULT_MODEL_ID;
 }
 
 const SCAN_PROMPT = `Identify every distinct visible item in this photo of a packing box.
@@ -81,16 +77,18 @@ function shouldEscalate(
   mode: ScanMode,
 ): boolean {
   if (mode === "high_accuracy") return true;
-
   if (items.length === 0) return true;
 
   const lowConfidence = items.filter((i) => i.confidence === "low");
   if (lowConfidence.length > items.length / 2) return true;
-
   if (items.length < 2) return true;
 
   if (
-    warnings.some((w) => w.toLowerCase().includes("generic") || w.toLowerCase().includes("overlap"))
+    warnings.some(
+      (w) =>
+        w.toLowerCase().includes("generic") ||
+        w.toLowerCase().includes("overlap"),
+    )
   ) {
     return true;
   }
@@ -102,9 +100,9 @@ export async function identifyBoxItems(
   input: IdentifyBoxItemsInput,
 ): Promise<ScanResult> {
   const { photoDataUri, boxId, scanMode = "balanced" } = input;
+  const model = await getActiveModel();
 
   const tryModel = async (
-    model: string,
     prompt: string,
   ): Promise<{
     items: ScanItem[];
@@ -112,15 +110,11 @@ export async function identifyBoxItems(
     needsReview: boolean;
   } | null> => {
     try {
-      const raw = await generateOpenRouterJson<{
+      const raw = await generateNimJson<{
         items?: ScanItem[];
         warnings?: string[];
         needs_review?: boolean;
-      }>({
-        prompt,
-        photoDataUri,
-        model,
-      });
+      }>({ prompt, photoDataUri, model });
 
       if (!raw || !Array.isArray(raw.items)) return null;
 
@@ -151,16 +145,12 @@ export async function identifyBoxItems(
     }
   };
 
-  let result = await tryModel(getPrimaryModel(), SCAN_PROMPT);
-
-  let modelUsed = getPrimaryModel();
+  let result = await tryModel(SCAN_PROMPT);
 
   if (!result || shouldEscalate(result.items, result.warnings, scanMode)) {
-    const fallbackResult = await tryModel(getFallbackModel(), VERIFICATION_PROMPT);
-
-    if (fallbackResult && fallbackResult.items.length > 0) {
-      result = fallbackResult;
-      modelUsed = getFallbackModel();
+    const fallback = await tryModel(VERIFICATION_PROMPT);
+    if (fallback && fallback.items.length > 0) {
+      result = fallback;
     }
   }
 
@@ -168,7 +158,7 @@ export async function identifyBoxItems(
     return {
       boxId: boxId || "",
       scanStatus: "failed",
-      modelUsed,
+      modelUsed: model,
       needsReview: true,
       rawConfidenceSummary: { high: 0, medium: 0, low: 0 },
       warnings: [
@@ -193,7 +183,7 @@ export async function identifyBoxItems(
   return {
     boxId: boxId || "",
     scanStatus: itemsWithNormalized.length > 0 ? "completed" : "partial",
-    modelUsed,
+    modelUsed: model,
     needsReview:
       result.needsReview ||
       confidenceSummary.low > 0 ||

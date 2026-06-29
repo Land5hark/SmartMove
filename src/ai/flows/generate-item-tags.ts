@@ -1,6 +1,8 @@
 "use server";
 
-import { generateOpenRouterJson } from "@/ai/openrouter";
+import { generateNimJson } from "@/ai/nvidia-nim";
+import { DEFAULT_MODEL_ID, MODEL_COOKIE } from "@/ai/models";
+import { cookies } from "next/headers";
 
 export type GenerateItemTagsInput = {
   photoDataUri: string;
@@ -18,9 +20,13 @@ Example: {"itemTags": ["books", "picture frames", "lamp"]}`;
 export async function generateItemTags(
   input: GenerateItemTagsInput,
 ): Promise<GenerateItemTagsOutput> {
-  const result = await generateOpenRouterJson<{ itemTags: string[] }>({
+  const jar = await cookies();
+  const model = jar.get(MODEL_COOKIE)?.value || DEFAULT_MODEL_ID;
+
+  const result = await generateNimJson<{ itemTags: string[] }>({
     prompt: PROMPT,
     photoDataUri: input.photoDataUri,
+    model,
   });
 
   return {

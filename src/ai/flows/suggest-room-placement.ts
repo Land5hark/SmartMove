@@ -1,6 +1,8 @@
 "use server";
 
-import { generateOpenRouterJson } from "@/ai/openrouter";
+import { generateNimJson } from "@/ai/nvidia-nim";
+import { DEFAULT_MODEL_ID, MODEL_COOKIE } from "@/ai/models";
+import { cookies } from "next/headers";
 
 export type SuggestRoomPlacementInput = {
   itemDescription: string;
@@ -22,8 +24,12 @@ Items: ${items}`;
 export async function suggestRoomPlacement(
   input: SuggestRoomPlacementInput,
 ): Promise<SuggestRoomPlacementOutput> {
-  const result = await generateOpenRouterJson<{ suggestedRoom: string }>({
+  const jar = await cookies();
+  const model = jar.get(MODEL_COOKIE)?.value || DEFAULT_MODEL_ID;
+
+  const result = await generateNimJson<{ suggestedRoom: string }>({
     prompt: PROMPT(input.itemDescription),
+    model,
   });
 
   return {
