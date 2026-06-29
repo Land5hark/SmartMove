@@ -43,6 +43,9 @@ export async function generateNimJson<T>({
     body: JSON.stringify({
       model,
       messages: [{ role: "user", content }],
+      max_tokens: 8192,
+      temperature: 0.7,
+      top_p: 0.95,
     }),
   });
 

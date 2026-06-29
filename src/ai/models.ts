@@ -6,19 +6,14 @@ export type AiModel = {
 
 export const AI_MODELS: AiModel[] = [
   {
-    id: "nvidia/llama-3.1-nemotron-ultra-253b-v1",
-    name: "Nemotron Ultra",
-    description: "NVIDIA Nemotron 253B — best reasoning & accuracy",
+    id: "minimaxai/minimax-m3",
+    name: "MiniMax M3",
+    description: "MiniMax M3 — multimodal, fast vision identification",
   },
   {
-    id: "minimax/minimax-text-01",
-    name: "MiniMax 3",
-    description: "MiniMax 456B — ultra-long context, fast",
-  },
-  {
-    id: "moonshot/kimi-k2-instruct",
-    name: "Kimi K2",
-    description: "Moonshot Kimi K2 — 1T MoE, strong instruction following",
+    id: "moonshotai/kimi-k2.6",
+    name: "Kimi K2.6",
+    description: "Moonshot Kimi K2.6 — multimodal, strong instruction following",
   },
 ];
 
