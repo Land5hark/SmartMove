@@ -40,9 +40,15 @@ export interface Box {
   id: string;
   qrCodeValue: string;
   userId?: string;
-  photoDataUrl?: string; // ephemeral base64 — not persisted to DB
-  photoUrl?: string; // Supabase Storage URL
-  photoPath?: string; // Supabase Storage path (for deletion)
+  // Ephemeral — never stored in DB
+  photoDataUrl?: string;
+  photoDataUrls?: string[];
+  // Persisted — stored in Supabase
+  photoUrl?: string;       // thumbnail URL (photoUrls[thumbnailIndex])
+  photoPath?: string;      // thumbnail path (photoPaths[thumbnailIndex])
+  photoUrls?: string[];    // all stored photo URLs
+  photoPaths?: string[];   // all stored photo paths (parallel array)
+  thumbnailIndex?: number; // which index is the inventory thumbnail
   items: BoxItem[];
   manualDescription?: string;
   aiGeneratedTags?: string[];

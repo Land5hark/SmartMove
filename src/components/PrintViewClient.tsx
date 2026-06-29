@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { siteConfig } from "@/config/site";
+import { getBoxShareUrl } from "@/lib/app-url";
 import { useAuth } from "@/lib/auth";
 import { getBox } from "@/lib/supabase-boxes";
 import type { Box } from "@/types";
@@ -47,7 +47,11 @@ export function PrintViewClient({ boxId }: PrintViewClientProps) {
     );
   }
 
-  const boxUrl = `${siteConfig.url}/box/${box.id}`;
+  const boxUrl = getBoxShareUrl(box.id);
+  const thumbnailSrc =
+    box.photoUrls?.[box.thumbnailIndex ?? 0] ??
+    box.photoUrl ??
+    box.photoDataUrl;
 
   return (
     <>
@@ -163,14 +167,14 @@ export function PrintViewClient({ boxId }: PrintViewClientProps) {
             </div>
           </section>
 
-          {(box.photoUrl || box.photoDataUrl) && (
+          {thumbnailSrc && (
             <section className="mb-8">
               <h2 className="text-2xl font-semibold mb-3 text-primary">
                 Photo of Contents
               </h2>
               <div className="border border-gray-300 rounded-md overflow-hidden p-2 bg-gray-50">
                 <Image
-                  src={box.photoUrl || box.photoDataUrl!}
+                  src={thumbnailSrc}
                   alt={`Contents of box ${box.id}`}
                   width={700}
                   height={450}

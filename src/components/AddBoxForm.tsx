@@ -41,6 +41,7 @@ import {
     Camera,
     CheckCircle,
     Loader2,
+    Star,
     SwitchCamera,
     Trash2,
     Video,
@@ -70,8 +71,16 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
   const router = useRouter();
   const { user } = useAuth();
 
-  const [capturedPhotos, setCapturedPhotos] = useState<string[]>(
-    existingBox?.photoDataUrl ? [existingBox.photoDataUrl] : [],
+  const [capturedPhotos, setCapturedPhotos] = useState<string[]>(() => {
+    if (existingBox?.photoUrls && existingBox.photoUrls.length > 0) {
+      return existingBox.photoUrls;
+    }
+    if (existingBox?.photoUrl) return [existingBox.photoUrl];
+    if (existingBox?.photoDataUrl) return [existingBox.photoDataUrl];
+    return [];
+  });
+  const [thumbnailIndex, setThumbnailIndex] = useState<number>(
+    existingBox?.thumbnailIndex ?? 0,
   );
   const [isScanning, setIsScanning] = useState(false);
   const [showReview, setShowReview] = useState(false);
@@ -309,13 +318,31 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
     }
     const boxId = data.id || existingBox?.id || generateBoxId();
     try {
+      // Build URL→path map from the existing box so we can preserve paths for kept photos
+      const existingUrlToPath = new Map<string, string>();
+      existingBox?.photoUrls?.forEach((url, i) => {
+        const path = existingBox.photoPaths?.[i];
+        if (path) existingUrlToPath.set(url, path);
+      });
+      if (existingBox?.photoUrl && existingBox.photoPath) {
+        existingUrlToPath.set(existingBox.photoUrl, existingBox.photoPath);
+      }
+
+      const keptUrls = capturedPhotos.filter((p) => p.startsWith("https://"));
+      const keptPaths = keptUrls
+        .map((url) => existingUrlToPath.get(url) ?? "")
+        .filter(Boolean);
+      const newDataUris = capturedPhotos.filter((p) => p.startsWith("data:"));
+      const safeThumbIdx = Math.min(thumbnailIndex, Math.max(0, capturedPhotos.length - 1));
+
       const savedBox = await saveBox(user.id, {
         id: boxId,
         manualDescription: data.manualDescription,
         assignedRoom: data.assignedRoom,
-        photoDataUrl: capturedPhotos[0] || existingBox?.photoDataUrl || undefined,
-        photoPath: existingBox?.photoPath,
-        photoUrl: existingBox?.photoUrl,
+        photoUrls: keptUrls,
+        photoPaths: keptPaths,
+        photoDataUrls: newDataUris,
+        thumbnailIndex: safeThumbIdx,
         aiGeneratedTags: aiTags,
         suggestedRoom: aiSuggestedRoom || undefined,
         createdAt: existingBox?.createdAt,
@@ -363,6 +390,11 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
   };
 
   const removePhotoAt = (index: number) => {
+    setThumbnailIndex((prev) => {
+      if (prev > index) return prev - 1;
+      if (prev === index) return 0;
+      return prev;
+    });
     setCapturedPhotos((prev) => {
       const next = prev.filter((_, i) => i !== index);
       if (next.length === 0) {
@@ -533,29 +565,40 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
             {capturedPhotos.length > 0 && !isCameraOpen && (
               <div className="space-y-3">
                 <div className="flex flex-wrap gap-2">
-                  {capturedPhotos.map((photo, idx) => (
-                    <div key={idx} className="relative group h-24 w-24 shrink-0">
-                      <Image
-                        src={photo}
-                        alt={`Photo ${idx + 1}`}
-                        fill
-                        className="rounded-md border object-cover"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removePhotoAt(idx)}
-                        className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
-                        title="Remove photo"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                      {idx === 0 && (
-                        <span className="absolute bottom-0.5 left-0.5 rounded bg-black/60 px-1 text-[9px] text-white">
-                          Primary
-                        </span>
-                      )}
-                    </div>
-                  ))}
+                  {capturedPhotos.map((photo, idx) => {
+                    const isThumb = idx === thumbnailIndex;
+                    return (
+                      <div key={idx} className="relative group h-24 w-24 shrink-0">
+                        <Image
+                          src={photo}
+                          alt={`Photo ${idx + 1}`}
+                          fill
+                          className={`rounded-md border object-cover transition-all ${isThumb ? "ring-2 ring-primary" : ""}`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removePhotoAt(idx)}
+                          className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                          title="Remove photo"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setThumbnailIndex(idx)}
+                          title={isThumb ? "Thumbnail" : "Set as thumbnail"}
+                          className={`absolute bottom-0.5 left-0.5 flex items-center gap-0.5 rounded px-1 py-0.5 text-[9px] transition-colors
+                            ${isThumb
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-black/50 text-white opacity-0 group-hover:opacity-100"
+                            }`}
+                        >
+                          <Star className={`h-2.5 w-2.5 ${isThumb ? "fill-current" : ""}`} />
+                          {isThumb ? "Thumb" : "Set"}
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
 
                 <div className="flex gap-2">

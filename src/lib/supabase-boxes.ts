@@ -10,13 +10,33 @@ type BoxRow = {
   ai_generated_tags: string[] | null;
   suggested_room: string | null;
   assigned_room: string | null;
-  photo_path: string | null;
-  photo_url: string | null;
+  photo_path: string | null;       // legacy thumbnail path
+  photo_url: string | null;        // legacy thumbnail URL
+  photo_urls: string[] | null;     // all stored URLs
+  photo_paths: string[] | null;    // all stored paths (parallel to photo_urls)
+  thumbnail_index: number | null;
   items: BoxItem[] | null;
   created_at: string;
 };
 
 function rowToBox(row: BoxRow): Box {
+  const photoUrls =
+    row.photo_urls && row.photo_urls.length > 0
+      ? row.photo_urls
+      : row.photo_url
+        ? [row.photo_url]
+        : [];
+  const photoPaths =
+    row.photo_paths && row.photo_paths.length > 0
+      ? row.photo_paths
+      : row.photo_path
+        ? [row.photo_path]
+        : [];
+  const thumbnailIndex = Math.min(
+    row.thumbnail_index ?? 0,
+    Math.max(0, photoUrls.length - 1),
+  );
+
   return {
     id: row.id,
     userId: row.user_id,
@@ -25,8 +45,11 @@ function rowToBox(row: BoxRow): Box {
     aiGeneratedTags: row.ai_generated_tags ?? [],
     suggestedRoom: row.suggested_room ?? undefined,
     assignedRoom: row.assigned_room ?? undefined,
-    photoPath: row.photo_path ?? undefined,
-    photoUrl: row.photo_url ?? undefined,
+    photoUrls: photoUrls.length > 0 ? photoUrls : undefined,
+    photoPaths: photoPaths.length > 0 ? photoPaths : undefined,
+    thumbnailIndex: photoUrls.length > 0 ? thumbnailIndex : undefined,
+    photoUrl: photoUrls[thumbnailIndex] ?? undefined,
+    photoPath: photoPaths[thumbnailIndex] ?? undefined,
     items: row.items ?? [],
     createdAt: row.created_at,
   };
@@ -36,11 +59,13 @@ async function uploadPhoto(
   userId: string,
   boxId: string,
   photoDataUrl: string,
+  suffix?: string,
 ): Promise<{ photoPath: string; photoUrl: string } | null> {
   const base64 = photoDataUrl.split(",")[1];
   const mime = photoDataUrl.split(";")[0].split(":")[1] || "image/jpeg";
   const ext = mime === "image/png" ? "png" : "jpg";
-  const path = `${userId}/${boxId}/photo.${ext}`;
+  const filename = suffix ? `photo_${suffix}.${ext}` : `photo.${ext}`;
+  const path = `${userId}/${boxId}/${filename}`;
 
   const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
   const { error } = await getSupabase().storage
@@ -53,8 +78,9 @@ async function uploadPhoto(
   return { photoPath: path, photoUrl: urlData.publicUrl };
 }
 
-async function deletePhoto(photoPath: string): Promise<void> {
-  await getSupabase().storage.from(BUCKET).remove([photoPath]);
+async function deletePhotos(paths: string[]): Promise<void> {
+  if (paths.length === 0) return;
+  await getSupabase().storage.from(BUCKET).remove(paths);
 }
 
 export async function listBoxes(userId: string): Promise<Box[]> {
@@ -83,20 +109,44 @@ export async function getBox(
   return rowToBox(data as BoxRow);
 }
 
+export async function getBoxPublic(boxId: string): Promise<Box | null> {
+  const { data, error } = await getSupabase()
+    .from("boxes")
+    .select("*")
+    .eq("id", boxId)
+    .single();
+
+  if (error || !data) return null;
+  return rowToBox(data as BoxRow);
+}
+
 export async function saveBox(
   userId: string,
   input: Partial<Box> & Pick<Box, "id">,
 ): Promise<Box> {
-  let photoPath = input.photoPath;
-  let photoUrl = input.photoUrl;
+  // Already-uploaded photos to keep (http/https URLs)
+  const keptUrls = input.photoUrls ?? (input.photoUrl ? [input.photoUrl] : []);
+  const keptPaths = input.photoPaths ?? (input.photoPath ? [input.photoPath] : []);
 
-  if (input.photoDataUrl) {
-    const uploaded = await uploadPhoto(userId, input.id, input.photoDataUrl);
-    if (uploaded) {
-      photoPath = uploaded.photoPath;
-      photoUrl = uploaded.photoUrl;
-    }
+  // New data-URI photos to upload
+  const newDataUris: string[] = [
+    ...(input.photoDataUrl ? [input.photoDataUrl] : []),
+    ...(input.photoDataUrls ?? []),
+  ];
+
+  const newUploads: Array<{ photoPath: string; photoUrl: string }> = [];
+  for (let i = 0; i < newDataUris.length; i++) {
+    const suffix = `${Date.now().toString(36)}_${i}`;
+    const uploaded = await uploadPhoto(userId, input.id, newDataUris[i], suffix);
+    if (uploaded) newUploads.push(uploaded);
   }
+
+  const allUrls = [...keptUrls, ...newUploads.map((u) => u.photoUrl)];
+  const allPaths = [...keptPaths, ...newUploads.map((u) => u.photoPath)];
+  const thumbnailIdx =
+    input.thumbnailIndex !== undefined
+      ? Math.min(input.thumbnailIndex, Math.max(0, allUrls.length - 1))
+      : 0;
 
   const row = {
     id: input.id,
@@ -105,8 +155,11 @@ export async function saveBox(
     ai_generated_tags: input.aiGeneratedTags ?? [],
     suggested_room: input.suggestedRoom ?? null,
     assigned_room: input.assignedRoom ?? null,
-    photo_path: photoPath ?? null,
-    photo_url: photoUrl ?? null,
+    photo_url: allUrls[thumbnailIdx] ?? null,
+    photo_path: allPaths[thumbnailIdx] ?? null,
+    photo_urls: allUrls.length > 0 ? allUrls : null,
+    photo_paths: allPaths.length > 0 ? allPaths : null,
+    thumbnail_index: allUrls.length > 0 ? thumbnailIdx : null,
     items: input.items ?? [],
     created_at: input.createdAt ?? new Date().toISOString(),
   };
@@ -132,9 +185,8 @@ export async function deleteBox(userId: string, boxId: string): Promise<void> {
 
   if (error) throw new Error(error.message);
 
-  if (box?.photoPath) {
-    await deletePhoto(box.photoPath).catch(() => undefined);
-  }
+  const paths = box?.photoPaths ?? (box?.photoPath ? [box.photoPath] : []);
+  await deletePhotos(paths).catch(() => undefined);
 }
 
 export function generateBoxId(): string {

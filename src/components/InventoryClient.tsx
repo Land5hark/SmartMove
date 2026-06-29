@@ -4,7 +4,7 @@ import { MasterQR } from "@/components/MasterQR";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { getAppUrl, getBoxUrl } from "@/lib/app-url";
+import { getAppUrl, getBoxShareUrl } from "@/lib/app-url";
 import {
   deleteDocument,
   downloadBlob,
@@ -348,8 +348,11 @@ export function InventoryClient() {
           {showBoxQRs && (
             <div className="mt-3 grid grid-cols-2 gap-3">
               {boxes.map((box) => {
-                const photoSrc = box.photoUrl || box.photoDataUrl;
-                const boxUrl = getBoxUrl(box.id);
+                const photoSrc =
+                  box.photoUrls?.[box.thumbnailIndex ?? 0] ??
+                  box.photoUrl ??
+                  box.photoDataUrl;
+                const boxUrl = getBoxShareUrl(box.id);
                 return (
                   <Card key={box.id} className="overflow-hidden">
                     <CardContent className="p-3">

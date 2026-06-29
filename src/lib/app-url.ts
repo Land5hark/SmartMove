@@ -13,3 +13,7 @@ export function getAppUrl(): string {
 export function getBoxUrl(boxId: string): string {
   return `${getAppUrl()}/box/${encodeURIComponent(boxId)}`;
 }
+
+export function getBoxShareUrl(boxId: string): string {
+  return `${getAppUrl()}/share/${encodeURIComponent(boxId)}`;
+}
