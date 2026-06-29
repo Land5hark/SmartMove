@@ -5,6 +5,81 @@ import { DEFAULT_MODEL_ID, MODEL_COOKIE } from "@/ai/models";
 import { cookies } from "next/headers";
 import type { ScanItem, ScanMode, ScanResult } from "@/types";
 
+function higherConfidence(
+  a: ScanItem["confidence"],
+  b: ScanItem["confidence"],
+): ScanItem["confidence"] {
+  const rank: Record<ScanItem["confidence"], number> = { high: 3, medium: 2, low: 1 };
+  return rank[a] >= rank[b] ? a : b;
+}
+
+function aggregateScanResults(results: ScanResult[]): ScanResult {
+  const itemMap = new Map<string, ScanItem>();
+  const allWarnings: string[] = [];
+  let modelUsed = "";
+
+  for (const result of results) {
+    modelUsed = modelUsed || result.modelUsed;
+    for (const w of result.warnings) {
+      if (!allWarnings.includes(w)) allWarnings.push(w);
+    }
+    for (const item of result.items) {
+      const existing = itemMap.get(item.normalized_label);
+      if (!existing) {
+        itemMap.set(item.normalized_label, { ...item, attributes: [...item.attributes] });
+      } else {
+        existing.count = Math.max(existing.count, item.count);
+        existing.confidence = higherConfidence(existing.confidence, item.confidence);
+        for (const attr of item.attributes) {
+          if (!existing.attributes.includes(attr)) existing.attributes.push(attr);
+        }
+        if (item.notes && item.notes !== existing.notes) {
+          existing.notes = [existing.notes, item.notes].filter(Boolean).join("; ");
+        }
+      }
+    }
+  }
+
+  const items = Array.from(itemMap.values());
+  return {
+    boxId: "",
+    scanStatus: results.every((r) => r.scanStatus === "completed") ? "completed" : "partial",
+    modelUsed,
+    needsReview: results.some((r) => r.needsReview),
+    rawConfidenceSummary: {
+      high: items.filter((i) => i.confidence === "high").length,
+      medium: items.filter((i) => i.confidence === "medium").length,
+      low: items.filter((i) => i.confidence === "low").length,
+    },
+    warnings: allWarnings,
+    items,
+  };
+}
+
+export async function identifyMultipleBoxPhotos(
+  photoDataUris: string[],
+  scanMode: ScanMode = "balanced",
+): Promise<ScanResult> {
+  if (photoDataUris.length === 0) {
+    return {
+      boxId: "",
+      scanStatus: "failed",
+      modelUsed: "",
+      needsReview: true,
+      rawConfidenceSummary: { high: 0, medium: 0, low: 0 },
+      warnings: ["No photos provided."],
+      items: [],
+    };
+  }
+  if (photoDataUris.length === 1) {
+    return identifyBoxItems({ photoDataUri: photoDataUris[0], scanMode });
+  }
+  const results = await Promise.all(
+    photoDataUris.map((uri) => identifyBoxItems({ photoDataUri: uri, scanMode })),
+  );
+  return aggregateScanResults(results);
+}
+
 type IdentifyBoxItemsInput = {
   photoDataUri: string;
   boxId?: string;

@@ -20,6 +20,7 @@ import { useMemo, useState } from "react";
 
 interface ScanReviewClientProps {
   photoPreview: string;
+  photoCount?: number;
   scanResult: ScanResult;
   onSave: (items: BoxItem[]) => void;
   onRescan: (mode: ScanMode) => void;
@@ -50,6 +51,7 @@ function boxItemToEditFields(item: BoxItem) {
 
 export function ScanReviewClient({
   photoPreview,
+  photoCount = 1,
   scanResult,
   onSave,
   onRescan,
@@ -186,6 +188,11 @@ export function ScanReviewClient({
       {/* Stats bar */}
       <div className="flex items-center gap-3 text-xs text-muted-foreground">
         <span>{items.length} items detected</span>
+        {photoCount > 1 && (
+          <Badge variant="outline" className="border-blue-300 text-blue-700">
+            {photoCount} photos
+          </Badge>
+        )}
         {confidenceSummary.high > 0 && (
           <Badge variant="outline" className="border-green-300 text-green-700">
             {confidenceSummary.high} high

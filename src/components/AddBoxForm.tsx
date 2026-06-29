@@ -1,6 +1,6 @@
 "use client";
 
-import { identifyBoxItems } from "@/ai/flows/identify-box-items";
+import { identifyMultipleBoxPhotos } from "@/ai/flows/identify-box-items";
 import { suggestRoomPlacement } from "@/ai/flows/suggest-room-placement";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -45,6 +45,7 @@ import {
     Trash2,
     Video,
     Wand2,
+    X,
     XCircle,
 } from "lucide-react";
 import Image from "next/image";
@@ -68,10 +69,10 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
   const { toast } = useToast();
   const router = useRouter();
   const { user } = useAuth();
-  const [photoPreview, setPhotoPreview] = useState<string | null>(
-    existingBox?.photoDataUrl || null,
+
+  const [capturedPhotos, setCapturedPhotos] = useState<string[]>(
+    existingBox?.photoDataUrl ? [existingBox.photoDataUrl] : [],
   );
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [showReview, setShowReview] = useState(false);
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
@@ -97,6 +98,8 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
     "user" | "environment"
   >("environment");
 
+  const primaryPreview = capturedPhotos[0] ?? null;
+
   const form = useForm<AddBoxFormValues>({
     resolver: zodResolver(addBoxFormSchema),
     defaultValues: {
@@ -110,7 +113,6 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
     let localStream: MediaStream | null = null;
 
     const getCameraStream = async () => {
-      // Stop any existing stream before getting a new one
       if (stream) {
         stream.getTracks().forEach((track) => track.stop());
         setStream(null);
@@ -167,36 +169,27 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
   }, [isCameraOpen, currentFacingMode, toast]);
 
   const handleFlipCamera = () => {
-    setCurrentFacingMode((prevMode) =>
-      prevMode === "user" ? "environment" : "user",
-    );
+    setCurrentFacingMode((prev) => (prev === "user" ? "environment" : "user"));
   };
 
   const handlePhotoChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      if (file.size > MAX_FILE_SIZE_BYTES) {
-        toast({
-          title: "File too large",
-          description: `Please select an image smaller than ${MAX_FILE_SIZE_MB}MB.`,
-          variant: "destructive",
-        });
-        setPhotoPreview(null);
-        setPhotoFile(null);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = "";
-        }
-        return;
-      }
-
-      setPhotoFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoPreview(reader.result as string);
-        triggerItemScan(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      toast({
+        title: "File too large",
+        description: `Please select an image smaller than ${MAX_FILE_SIZE_MB}MB.`,
+        variant: "destructive",
+      });
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
     }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setCapturedPhotos((prev) => [...prev, reader.result as string]);
+    };
+    reader.readAsDataURL(file);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleCapturePhoto = () => {
@@ -213,40 +206,28 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
         }
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
         const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
-        setPhotoPreview(dataUrl);
-        setPhotoFile(null);
-        triggerItemScan(dataUrl);
+        setCapturedPhotos((prev) => [...prev, dataUrl]);
         setIsCameraOpen(false);
       } else {
-        toast({
-          title: "Error capturing photo",
-          description: "Could not get canvas context.",
-          variant: "destructive",
-        });
+        toast({ title: "Error capturing photo", description: "Could not get canvas context.", variant: "destructive" });
       }
     } else {
-      toast({
-        title: "Error capturing photo",
-        description: "Camera or canvas not ready.",
-        variant: "destructive",
-      });
+      toast({ title: "Error capturing photo", description: "Camera or canvas not ready.", variant: "destructive" });
     }
   };
 
-  const triggerItemScan = async (photoDataUrl: string) => {
+  const handleIdentifyItems = async () => {
+    if (capturedPhotos.length === 0) return;
     setIsScanning(true);
     setShowReview(false);
     setScanResult(null);
     try {
-      const result = await identifyBoxItems({
-        photoDataUri: photoDataUrl,
-        scanMode: "balanced",
-      });
+      const result = await identifyMultipleBoxPhotos(capturedPhotos, "balanced");
       setScanResult(result);
       setShowReview(true);
       toast({
         title: "AI Scan Complete",
-        description: `${result.items.length} items detected.`,
+        description: `${result.items.length} items detected across ${capturedPhotos.length} photo${capturedPhotos.length > 1 ? "s" : ""}.`,
       });
       if (result.items.length > 0) {
         const tags = result.items.map((i) => i.label);
@@ -257,8 +238,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
       console.error("AI Scan Error:", error);
       toast({
         title: "AI Scan Failed",
-        description:
-          "Could not identify items in the image. You can add them manually.",
+        description: "Could not identify items. You can add them manually.",
         variant: "destructive",
       });
     } finally {
@@ -267,26 +247,16 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
   };
 
   const handleRescan = async (mode: ScanMode) => {
-    if (!photoPreview) return;
+    if (capturedPhotos.length === 0) return;
     setIsScanning(true);
     try {
-      const result = await identifyBoxItems({
-        photoDataUri: photoPreview,
-        scanMode: mode,
-      });
+      const result = await identifyMultipleBoxPhotos(capturedPhotos, mode);
       setScanResult(result);
       setShowReview(true);
-      toast({
-        title: "Rescan Complete",
-        description: `${result.items.length} items detected.`,
-      });
+      toast({ title: "Rescan Complete", description: `${result.items.length} items detected.` });
     } catch (error) {
       console.error("Rescan Error:", error);
-      toast({
-        title: "Rescan Failed",
-        description: "Please try again or add items manually.",
-        variant: "destructive",
-      });
+      toast({ title: "Rescan Failed", description: "Please try again or add items manually.", variant: "destructive" });
     } finally {
       setIsScanning(false);
     }
@@ -295,19 +265,15 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
   const handleReviewSave = (items: import("@/types").BoxItem[]) => {
     setReviewedItems(items);
     setShowReview(false);
-    const tags = items.map((i) => i.name);
-    setAiTags(tags);
-    toast({
-      title: "Items saved",
-      description: `${items.length} items confirmed.`,
-    });
+    setAiTags(items.map((i) => i.name));
+    toast({ title: "Items saved", description: `${items.length} items confirmed.` });
   };
 
   const handleRetakePhoto = () => {
     setShowReview(false);
     setScanResult(null);
     setReviewedItems([]);
-    removePhoto();
+    clearAllPhotos();
   };
 
   const handleCancelReview = () => {
@@ -320,33 +286,17 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
       setAiSuggestedRoom(null);
       return;
     }
-
     setIsSuggestingRoom(true);
     setAiSuggestedRoom(null);
-    const descriptionToUse =
-      itemDescription || form.getValues("manualDescription") || "";
-
-    if (!descriptionToUse.trim()) {
-      setIsSuggestingRoom(false);
-      return;
-    }
-
+    const descriptionToUse = itemDescription || form.getValues("manualDescription") || "";
+    if (!descriptionToUse.trim()) { setIsSuggestingRoom(false); return; }
     try {
-      const result = await suggestRoomPlacement({
-        itemDescription: descriptionToUse,
-      });
+      const result = await suggestRoomPlacement({ itemDescription: descriptionToUse });
       setAiSuggestedRoom(result.suggestedRoom);
-      toast({
-        title: "AI Room Suggestion",
-        description: `Suggested room: ${result.suggestedRoom}.`,
-      });
+      toast({ title: "AI Room Suggestion", description: `Suggested room: ${result.suggestedRoom}.` });
     } catch (error) {
       console.error("AI Room Suggestion Error:", error);
-      toast({
-        title: "AI Room Suggestion Failed",
-        description: "Could not suggest a room. Please assign manually.",
-        variant: "destructive",
-      });
+      toast({ title: "AI Room Suggestion Failed", description: "Could not suggest a room. Please assign manually.", variant: "destructive" });
     } finally {
       setIsSuggestingRoom(false);
     }
@@ -363,7 +313,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
         id: boxId,
         manualDescription: data.manualDescription,
         assignedRoom: data.assignedRoom,
-        photoDataUrl: photoPreview || undefined,
+        photoDataUrl: capturedPhotos[0] || existingBox?.photoDataUrl || undefined,
         photoPath: existingBox?.photoPath,
         photoUrl: existingBox?.photoUrl,
         aiGeneratedTags: aiTags,
@@ -375,11 +325,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
         title: existingBox ? "Box Updated!" : "Box Added!",
         description: `Box #${savedBox.id.substring(0, 6)} has been successfully ${existingBox ? "updated" : "saved"}.`,
         action: (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => router.push(`/box/${savedBox.id}`)}
-          >
+          <Button variant="outline" size="sm" onClick={() => router.push(`/box/${savedBox.id}`)}>
             View Box
           </Button>
         ),
@@ -395,8 +341,6 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
   };
 
   const openCamera = () => {
-    setPhotoPreview(null);
-    setPhotoFile(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
     setCurrentFacingMode("environment");
     setIsCameraOpen(true);
@@ -407,9 +351,8 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
     fileInputRef.current?.click();
   };
 
-  const removePhoto = () => {
-    setPhotoPreview(null);
-    setPhotoFile(null);
+  const clearAllPhotos = () => {
+    setCapturedPhotos([]);
     setShowReview(false);
     setScanResult(null);
     setReviewedItems([]);
@@ -417,6 +360,20 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
     setAiSuggestedRoom(null);
     setIsCameraOpen(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const removePhotoAt = (index: number) => {
+    setCapturedPhotos((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      if (next.length === 0) {
+        setShowReview(false);
+        setScanResult(null);
+        setReviewedItems([]);
+        setAiTags([]);
+        setAiSuggestedRoom(null);
+      }
+      return next;
+    });
   };
 
   return (
@@ -457,10 +414,9 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
 
         <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle>Box Contents Photo</CardTitle>
+            <CardTitle>Box Contents Photos</CardTitle>
             <CardDescription>
-              Add a photo of the items inside the box using your camera or by
-              uploading an image.
+              Take multiple photos to capture items at different layers. AI identifies everything and merges the results.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -472,9 +428,10 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
               ref={fileInputRef}
               id="photoUpload"
             />
-            <canvas ref={canvasRef} className="hidden"></canvas>
+            <canvas ref={canvasRef} className="hidden" />
 
-            {!photoPreview && !isCameraOpen && (
+            {/* Empty state — no photos yet */}
+            {capturedPhotos.length === 0 && !isCameraOpen && (
               <div className="flex flex-col items-center gap-3">
                 <button
                   type="button"
@@ -500,6 +457,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
               </div>
             )}
 
+            {/* Camera view */}
             {isCameraOpen && (
               <div className="space-y-4">
                 <div className="relative overflow-hidden rounded-card">
@@ -520,6 +478,11 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
                   >
                     <SwitchCamera className="h-5 w-5" />
                   </Button>
+                  {capturedPhotos.length > 0 && (
+                    <div className="absolute top-3 left-3 rounded-full bg-background/70 backdrop-blur-sm px-2.5 py-1 text-xs font-medium">
+                      {capturedPhotos.length} photo{capturedPhotos.length > 1 ? "s" : ""} captured
+                    </div>
+                  )}
                 </div>
                 {hasCameraPermission === false && (
                   <Alert variant="destructive">
@@ -566,65 +529,78 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
               </div>
             )}
 
-            {photoPreview && !isCameraOpen && (
-              <div className="mt-4 relative group">
-                <Image
-                  src={photoPreview}
-                  alt="Box contents preview"
-                  width={500}
-                  height={300}
-                  className="rounded-md object-contain max-h-[300px] w-auto mx-auto border"
-                  data-ai-hint="moving box items"
-                />
-                <div className="absolute top-2 right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={openFileUpload}
-                    title="Change Photo (Upload)"
-                  >
-                    <Camera className="h-4 w-4" />
-                    <span className="sr-only">Change Photo (Upload)</span>
+            {/* Photo thumbnail strip + controls */}
+            {capturedPhotos.length > 0 && !isCameraOpen && (
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  {capturedPhotos.map((photo, idx) => (
+                    <div key={idx} className="relative group h-24 w-24 shrink-0">
+                      <Image
+                        src={photo}
+                        alt={`Photo ${idx + 1}`}
+                        fill
+                        className="rounded-md border object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removePhotoAt(idx)}
+                        className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                        title="Remove photo"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                      {idx === 0 && (
+                        <span className="absolute bottom-0.5 left-0.5 rounded bg-black/60 px-1 text-[9px] text-white">
+                          Primary
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={openCamera}>
+                    <Camera className="mr-1.5 h-4 w-4" /> Add Photo
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={openFileUpload}>
+                    Upload
                   </Button>
                   <Button
                     type="button"
-                    variant="secondary"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={openCamera}
-                    title="Change Photo (Camera)"
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearAllPhotos}
+                    className="ml-auto text-destructive hover:text-destructive"
                   >
-                    <Video className="h-4 w-4" />
-                    <span className="sr-only">Change Photo (Camera)</span>
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={removePhoto}
-                    title="Remove Photo"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    <span className="sr-only">Remove Photo</span>
+                    <Trash2 className="mr-1.5 h-4 w-4" /> Clear All
                   </Button>
                 </div>
+
+                {!showReview && !isScanning && (
+                  <Button type="button" className="w-full" onClick={handleIdentifyItems}>
+                    <Wand2 className="mr-2 h-4 w-4" />
+                    Identify Items{capturedPhotos.length > 1 ? ` (${capturedPhotos.length} photos)` : ""}
+                  </Button>
+                )}
               </div>
             )}
 
             {isScanning && (
               <div className="flex items-center gap-2 text-sm text-primary">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span>AI is scanning your photo…</span>
+                <span>
+                  {capturedPhotos.length > 1
+                    ? `AI is scanning ${capturedPhotos.length} photos in parallel…`
+                    : "AI is scanning your photo…"}
+                </span>
               </div>
             )}
 
-            {showReview && scanResult && photoPreview && (
+            {showReview && scanResult && primaryPreview && (
               <div className="mt-4">
                 <ScanReviewClient
-                  photoPreview={photoPreview}
+                  photoPreview={primaryPreview}
+                  photoCount={capturedPhotos.length}
                   scanResult={scanResult}
                   onSave={handleReviewSave}
                   onRescan={handleRescan}
@@ -675,7 +651,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
                       className="resize-y min-h-[100px]"
                       {...field}
                       onBlur={() => {
-                        if (!aiTags.length && !photoPreview) {
+                        if (!aiTags.length && capturedPhotos.length === 0) {
                           triggerAiRoomSuggestion(field.value || "");
                         }
                       }}
@@ -713,13 +689,8 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
                   type="button"
                   className="ml-auto text-xs text-accent underline underline-offset-2"
                   onClick={() => {
-                    form.setValue("assignedRoom", aiSuggestedRoom as Room, {
-                      shouldValidate: true,
-                    });
-                    toast({
-                      title: "Room Applied",
-                      description: `${aiSuggestedRoom} has been set as the assigned room.`,
-                    });
+                    form.setValue("assignedRoom", aiSuggestedRoom as Room, { shouldValidate: true });
+                    toast({ title: "Room Applied", description: `${aiSuggestedRoom} has been set as the assigned room.` });
                   }}
                 >
                   Apply
@@ -732,10 +703,7 @@ export function AddBoxForm({ existingBox }: { existingBox?: Box }) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Assigned Room</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select a room" />
